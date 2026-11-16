@@ -1,0 +1,17 @@
+// Smart Transportation - Prisma Schema (initial, infrastructure phase)
+// No business tables are defined yet. The full database schema will be
+// designed in the next development phase.
+//
+// Connection:
+//   DATABASE_URL -> Neon pooled connection string (app runtime)
+//   DIRECT_URL   -> Neon direct connection string (migrations)
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
