@@ -16,7 +16,13 @@ const envSchema = z.object({
   // Neon direct connection string — used by Prisma migrations
   DIRECT_URL: z.string().min(1, 'DIRECT_URL is required'),
   JWT_SECRET: z.string().min(1, 'JWT_SECRET is required'),
-  FRONTEND_URL: z.string().url('FRONTEND_URL must be a valid URL'),
+  // Comma-separated list of allowed frontend origins (e.g. "http://localhost:8081,http://localhost:19006")
+  FRONTEND_URL: z
+    .string()
+    .min(1, 'FRONTEND_URL is required')
+    .transform((val) =>
+      val.split(',').map((s) => s.trim()).filter(Boolean)
+    ),
 });
 
 const _env = envSchema.safeParse(process.env);

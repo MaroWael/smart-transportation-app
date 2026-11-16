@@ -28,10 +28,23 @@ export const app: Application = express();
 // 1. JSON request parsing
 app.use(express.json());
 
-// 2. CORS — restrict to the frontend URL in production, allow all in dev
+// 2. CORS — restrict to the frontend URL(s) in production
+//    env.FRONTEND_URL is a comma-separated list transformed into an array.
+//    Requests with no Origin header (e.g. mobile apps) are allowed.
+const frontendOrigins = env.FRONTEND_URL;
+
 app.use(
   cors({
-    origin: process.env.FRONTEND_URL || '*',
+    origin: (origin, callback) => {
+      // Allow requests with no Origin header (mobile apps, curl, etc.)
+      if (!origin) {
+        return callback(null, true);
+      }
+      if (frontendOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+      return callback(new Error('Not allowed by CORS'));
+    },
   })
 );
 

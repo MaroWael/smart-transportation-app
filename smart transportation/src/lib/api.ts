@@ -17,20 +17,28 @@
  *   sure the device and computer are on the same Wi-Fi network.
  */
 
-import { Platform } from 'react-native';
-
 // Read the optional production override without requiring the
 // auto-generated expo-env.d.ts (which may not exist yet).
 const EXPO_PUBLIC_API_URL =
   (process.env as { EXPO_PUBLIC_API_URL?: string }).EXPO_PUBLIC_API_URL ??
   undefined;
 
+const normalizeBaseUrl = (url: string): string => {
+  const withoutTrailingSlash = url.replace(/\/$/, '');
+  return withoutTrailingSlash.endsWith('/api')
+    ? withoutTrailingSlash
+    : `${withoutTrailingSlash}/api`;
+};
+
 const getApiBaseUrl = (): string => {
+  if (EXPO_PUBLIC_API_URL) {
+    return normalizeBaseUrl(EXPO_PUBLIC_API_URL);
+  }
   if (__DEV__) {
     // Local development backend running on your computer.
     return 'http://localhost:5000/api';
   }
-  return EXPO_PUBLIC_API_URL ?? 'https://smart-transportation-backend.vercel.app/api';
+  return 'https://smart-transportation-app.vercel.app/api';
 };
 
 export const API_BASE_URL = getApiBaseUrl();
