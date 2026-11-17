@@ -16,6 +16,8 @@ const envSchema = z.object({
   // Neon direct connection string — used by Prisma migrations
   DIRECT_URL: z.string().min(1, 'DIRECT_URL is required'),
   JWT_SECRET: z.string().min(1, 'JWT_SECRET is required'),
+  // JWT access token lifetime (e.g. "7d", "1h"). Defaults to 7 days.
+  JWT_EXPIRES_IN: z.string().default('7d'),
   // Comma-separated list of allowed frontend origins (e.g. "http://localhost:8081,http://localhost:19006")
   FRONTEND_URL: z
     .string()
@@ -23,6 +25,9 @@ const envSchema = z.object({
     .transform((val) =>
       val.split(',').map((s) => s.trim()).filter(Boolean)
     ),
+  // Optional seed credentials (used only by prisma/seed.ts).
+  ADMIN_EMAIL: z.string().email().optional(),
+  ADMIN_PASSWORD: z.string().min(8).optional(),
 });
 
 const _env = envSchema.safeParse(process.env);

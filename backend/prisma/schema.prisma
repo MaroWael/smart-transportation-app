@@ -15,3 +15,22 @@ datasource db {
   url      = env("DATABASE_URL")
   directUrl = env("DIRECT_URL")
 }
+
+enum Role {
+  PASSENGER
+  STATION_EMPLOYEE
+  ADMIN
+}
+
+model User {
+  id        String   @id @default(uuid())
+  fullName  String
+  email     String   @unique
+  passwordHash String
+  role      Role     @default(PASSENGER)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([role])
+}

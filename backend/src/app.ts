@@ -21,6 +21,7 @@ import express, { Application } from 'express';
 import cors from 'cors';
 import { env } from './config/env';
 import healthRouter from './routes/health.route';
+import authRouter from './routes/auth.route';
 import { errorHandler, notFoundHandler } from './middlewares/error.middleware';
 
 export const app: Application = express();
@@ -58,6 +59,7 @@ if (env.NODE_ENV === 'development') {
 
 // 4. API routes (all mounted under /api)
 app.use('/api', healthRouter);
+app.use('/api/auth', authRouter);
 
 // 5. 404 handler (after routes)
 app.use(notFoundHandler);
