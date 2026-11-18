@@ -49,12 +49,29 @@ export const API_BASE_URL = getApiBaseUrl();
 export class ApiError extends Error {
   public readonly status: number;
   public readonly body?: unknown;
+  public readonly errors?: Record<string, string[]>;
 
   constructor(status: number, message: string, body?: unknown) {
     super(message);
     this.name = 'ApiError';
     this.status = status;
     this.body = body;
+    this.errors = ApiError.parseErrors(body);
+  }
+
+  /**
+   * Defensively parse validation errors from the response body.
+   * Empty or non-JSON bodies never throw.
+   */
+  private static parseErrors(body: unknown): Record<string, string[]> | undefined {
+    if (!body || typeof body !== 'object' || Array.isArray(body)) {
+      return undefined;
+    }
+    const errors = (body as Record<string, unknown>).errors;
+    if (errors && typeof errors === 'object' && !Array.isArray(errors)) {
+      return errors as Record<string, string[]>;
+    }
+    return undefined;
   }
 }
 
