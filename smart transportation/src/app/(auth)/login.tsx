@@ -1,23 +1,14 @@
 import { useState } from 'react';
-import {
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  TextInput,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { StyleSheet, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'expo-router';
 
-import { ThemedView } from '@/components/themed-view';
-import { ThemedText } from '@/components/themed-text';
+import { Button, Screen, TextField, Wordmark } from '@/components/ui';
 import { useTheme } from '@/hooks/use-theme';
 
 import { useAuth } from '@/context/auth-context';
 
-const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+$/;
 
 export default function LoginScreen() {
   const { t } = useTranslation();
@@ -29,7 +20,7 @@ export default function LoginScreen() {
   const [submitting, setSubmitting] = useState(false);
   const [localFieldErrors, setLocalFieldErrors] = useState<Record<string, string>>({});
 
-  const mainError = apiErrorKey ? t(apiErrorKey) : null;
+  const mainError = apiErrorKey ? (t(apiErrorKey as any) as string) : null;
   const emailError = localFieldErrors.email ?? apiFieldErrors?.email?.[0];
   const passwordError = localFieldErrors.password ?? apiFieldErrors?.password?.[0];
 
@@ -76,202 +67,98 @@ export default function LoginScreen() {
     }
   };
 
-  const inputStyle = {
-    backgroundColor: theme.backgroundElement,
-    color: theme.text,
-  };
-  const buttonStyle = {
-    backgroundColor: theme.backgroundSelected,
-  };
-
   return (
-    <ThemedView type="background" style={styles.container}>
-      <SafeAreaView style={styles.safeArea}>
-        <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-          style={styles.keyboardAvoiding}
-        >
-          <ScrollView
-            contentContainerStyle={styles.scrollContainer}
-            keyboardShouldPersistTaps="handled"
-          >
-            <ThemedView style={styles.card}>
-              <ThemedText
-                type="title"
-                style={styles.title}
-                accessibilityLabel={t('auth.loginTitle')}
-              >
-                {t('auth.loginTitle')}
-              </ThemedText>
+    <Screen>
+      <Wordmark />
+      <View style={styles.headerSpacer} />
+      <Text style={[styles.title, { color: theme.textPrimary }]}>{t('auth.welcomeBack')}</Text>
+      <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
+        {t('auth.loginSubtitle')}
+      </Text>
 
-              {mainError && (
-                <ThemedText
-                  type="small"
-                  style={styles.errorText}
-                  accessibilityLabel={mainError}
-                >
-                  {mainError}
-                </ThemedText>
-              )}
+      <TextField
+        label={t('auth.email')}
+        value={email}
+        onChangeText={(text) => {
+          setEmail(text);
+          clearFieldError('email');
+        }}
+        placeholder={t('auth.emailPlaceholder')}
+        keyboardType="email-address"
+        autoCapitalize="none"
+        autoComplete="email"
+        autoCorrect={false}
+        blurOnSubmit={false}
+        returnKeyType="next"
+        accessibilityLabel={t('auth.email')}
+        error={emailError}
+      />
 
-              <ThemedText
-                type="smallBold"
-                style={styles.label}
-                accessibilityLabel={t('auth.email')}
-              >
-                {t('auth.email')}
-              </ThemedText>
-              <TextInput
-                accessibilityLabel={t('auth.emailPlaceholder')}
-                accessibilityRole="text"
-                autoCapitalize="none"
-                autoComplete="email"
-                autoCorrect={false}
-                blurOnSubmit={false}
-                value={email}
-                onChangeText={(text) => {
-                  setEmail(text);
-                  clearFieldError('email');
-                }}
-                keyboardType="email-address"
-                returnKeyType="next"
-                style={[styles.input, inputStyle]}
-              />
-              {emailError && (
-                <ThemedText
-                  type="small"
-                  style={styles.fieldError}
-                  accessibilityLabel={emailError}
-                >
-                  {emailError}
-                </ThemedText>
-              )}
+      <TextField
+        label={t('auth.password')}
+        helper={t('validation.passwordTooShort')}
+        value={password}
+        onChangeText={(text) => {
+          setPassword(text);
+          clearFieldError('password');
+        }}
+        placeholder={t('auth.passwordPlaceholder')}
+        autoComplete="current-password"
+        autoCorrect={false}
+        blurOnSubmit={false}
+        returnKeyType="done"
+        onSubmitEditing={handleSubmit}
+        secureTextEntry
+        accessibilityLabel={t('auth.password')}
+        error={passwordError}
+      />
 
-              <ThemedText
-                type="smallBold"
-                style={[styles.label, styles.marginTop]}
-                accessibilityLabel={t('auth.password')}
-              >
-                {t('auth.password')}
-              </ThemedText>
-              <TextInput
-                accessibilityLabel={t('auth.passwordPlaceholder')}
-                accessibilityRole="text"
-                autoComplete="current-password"
-                autoCorrect={false}
-                blurOnSubmit={false}
-                value={password}
-                onChangeText={(text) => {
-                  setPassword(text);
-                  clearFieldError('password');
-                }}
-                onSubmitEditing={handleSubmit}
-                returnKeyType="done"
-                secureTextEntry
-                style={[styles.input, inputStyle]}
-              />
-              {passwordError && (
-                <ThemedText
-                  type="small"
-                  style={styles.fieldError}
-                  accessibilityLabel={passwordError}
-                >
-                  {passwordError}
-                </ThemedText>
-              )}
+      {mainError && (
+        <Text style={[styles.formError, { color: theme.error }]} accessibilityLabel={mainError}>
+          {mainError}
+        </Text>
+      )}
 
-              <Pressable
-                accessibilityLabel={submitting ? t('common.loading') : t('auth.login')}
-                accessibilityRole="button"
-                disabled={submitting}
-                onPress={handleSubmit}
-                style={[styles.button, buttonStyle, submitting && styles.buttonDisabled]}
-              >
-                <ThemedText type="smallBold" style={styles.buttonText}>
-                  {submitting ? t('common.loading') : t('auth.login')}
-                </ThemedText>
-              </Pressable>
+      <Button disabled={submitting} onPress={handleSubmit} style={styles.button}>
+        {submitting ? t('common.loading') : t('auth.login')}
+      </Button>
 
-              <Link href="/register" asChild style={styles.linkContainer}>
-                <Pressable accessibilityLabel={t('auth.noAccount')} accessibilityRole="link">
-                  <ThemedText type="small" style={styles.linkText}>
-                    {t('auth.noAccount')} 
-                    <ThemedText type="smallBold">{t('auth.createAccount')}</ThemedText>
-                  </ThemedText>
-                </Pressable>
-              </Link>
-            </ThemedView>
-          </ScrollView>
-        </KeyboardAvoidingView>
-      </SafeAreaView>
-    </ThemedView>
+      <Link href="/register" asChild style={styles.linkContainer}>
+        <Button variant="ghost" style={styles.secondaryButton}>
+          {t('auth.noAccount')} {t('auth.createAccount')}
+        </Button>
+      </Link>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  safeArea: {
-    flex: 1,
-  },
-  keyboardAvoiding: {
-    flex: 1,
-  },
-  scrollContainer: {
-    flexGrow: 1,
-    justifyContent: 'center',
-    paddingHorizontal: 24,
-  },
-  card: {
-    alignItems: 'center',
+  headerSpacer: {
+    height: 24,
   },
   title: {
+    fontSize: 28,
+    fontWeight: 600,
+    marginBottom: 8,
+  },
+  subtitle: {
+    fontSize: 14,
     marginBottom: 32,
-    textAlign: 'center',
   },
-  label: {
-    alignSelf: 'flex-start',
-    marginBottom: 8,
-  },
-  marginTop: {
-    marginTop: 24,
-  },
-  input: {
-    width: '100%',
-    minHeight: 48,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderRadius: 8,
-    marginBottom: 8,
-    textAlignVertical: 'center',
-  },
-  fieldError: {
-    alignSelf: 'flex-start',
-    marginBottom: 16,
-  },
-  errorText: {
-    alignSelf: 'flex-start',
-    marginBottom: 16,
+  formError: {
+    fontSize: 12,
+    marginBottom: 20,
+    marginTop: 8,
   },
   button: {
     width: '100%',
-    minHeight: 48,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderRadius: 8,
-    marginTop: 24,
+    marginTop: 8,
   },
-  buttonDisabled: {
-    opacity: 0.6,
-  },
-  buttonText: {
-    textAlign: 'center',
+  secondaryButton: {
+    width: '100%',
+    marginTop: 12,
   },
   linkContainer: {
     marginTop: 20,
-  },
-  linkText: {
-    textAlign: 'center',
   },
 });

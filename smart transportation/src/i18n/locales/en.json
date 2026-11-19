@@ -22,6 +22,8 @@
     "confirmPassword": "Confirm password",
     "loginTitle": "Log in to your account",
     "registerTitle": "Create an account",
+    "welcomeBack": "Welcome back",
+    "loginSubtitle": "Sign in to your account",
     "emailPlaceholder": "Enter your email",
     "passwordPlaceholder": "Enter your password",
     "fullNamePlaceholder": "Enter your full name",
@@ -30,6 +32,10 @@
     "haveAccount": "Already have an account?",
     "createAccount": "Create account",
     "signIn": "Sign in",
+    "showPassword": "Show password",
+    "hidePassword": "Hide password",
+    "alreadyRegistered": "Already registered?",
+    "legalLine": "By creating an account you agree to our Terms of Service and Privacy Policy.",
     "invalidCredentials": "Invalid email or password",
     "loginSuccess": "Logged in successfully",
     "registerSuccess": "Account created successfully"
@@ -49,6 +55,7 @@
     "updateSuccess": "Profile updated"
   },
   "errors": {
+    "offline": "You're offline",
     "invalidCredentials": "Invalid email or password. Please try again.",
     "emailTaken": "This email is already taken. Please use another email.",
     "inactiveAccount": "Your account is inactive. Please contact support.",

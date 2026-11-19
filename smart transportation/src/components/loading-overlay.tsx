@@ -1,19 +1,19 @@
-import { ActivityIndicator, StyleSheet } from 'react-native';
-import { useTranslation } from 'react-i18next';
+import { StyleSheet, View } from 'react-native';
 
-import { ThemedView } from '@/components/themed-view';
-import { ThemedText } from '@/components/themed-text';
 import { useTheme } from '@/hooks/use-theme';
+import { Wordmark } from '@/components/ui/wordmark';
 
+/**
+ * Splash / loading overlay: just the wordmark centered in primary blue on the
+ * background color, nothing else.
+ */
 export function LoadingOverlay() {
-  const { t } = useTranslation();
   const theme = useTheme();
 
   return (
-    <ThemedView type="background" style={styles.overlay}>
-      <ActivityIndicator size="large" color={theme.textSecondary} />
-      <ThemedText type="subtitle">{t('common.loading')}</ThemedText>
-    </ThemedView>
+    <View style={[styles.overlay, { backgroundColor: theme.background }]}>
+      <Wordmark />
+    </View>
   );
 }
 

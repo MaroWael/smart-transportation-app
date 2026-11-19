@@ -39,7 +39,7 @@ export default function ProfileScreen() {
   const isLoading = status === 'loading';
 
   const roleKey = user?.role ? ROLE_LABELS[user.role] : null;
-  const roleLabel = roleKey ? t(roleKey) : t('profile.role');
+  const roleLabel = (roleKey ? t(roleKey as any) : t('profile.role')) as string;
 
   const memberSince = user?.createdAt
     ? new Intl.DateTimeFormat(undefined, {
@@ -90,8 +90,8 @@ export default function ProfileScreen() {
   };
 
   const inputStyle = {
-    backgroundColor: theme.backgroundElement,
-    color: theme.text,
+    backgroundColor: theme.surfaceAlt,
+    color: theme.textPrimary,
   };
 
   return (
