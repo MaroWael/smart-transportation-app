@@ -3,9 +3,9 @@ import { StyleSheet, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'expo-router';
 
-import { Button, Screen, TextField, Wordmark } from '@/components/ui';
+import { BrandHeader, Button, Screen, TextField } from '@/components/ui';
 import { useTheme } from '@/hooks/use-theme';
-
+import { fontSize, spacing } from '@/constants/theme';
 import { useAuth } from '@/context/auth-context';
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+$/;
@@ -31,6 +31,7 @@ export default function RegisterScreen() {
 
   const clearFieldError = (field: string) => {
     setLocalFieldErrors((prev) => {
+      if (!prev[field]) return prev;
       const next = { ...prev };
       delete next[field];
       return next;
@@ -91,9 +92,15 @@ export default function RegisterScreen() {
 
   return (
     <Screen>
-      <Wordmark />
+      <BrandHeader style={styles.brandHeader} />
       <View style={styles.headerSpacer} />
-      <Text style={[styles.title, { color: theme.textPrimary }]}>{t('auth.registerTitle')}</Text>
+
+      <Text style={[styles.title, { color: theme.textPrimary }]}>
+        {t('auth.registerTitle')}
+      </Text>
+      <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
+        {t('auth.registerSubtitle')}
+      </Text>
 
       <TextField
         label={t('auth.fullName')}
@@ -167,13 +174,23 @@ export default function RegisterScreen() {
       />
 
       {mainError && (
-        <Text style={[styles.formError, { color: theme.error }]} accessibilityLabel={mainError}>
-          {mainError}
-        </Text>
+        <View style={styles.formErrorContainer}>
+          <Text
+            style={[styles.formError, { color: theme.error }]}
+            accessibilityLabel={mainError}
+          >
+            {mainError}
+          </Text>
+        </View>
       )}
 
-      <Button disabled={submitting} onPress={handleSubmit} style={styles.button}>
-        {submitting ? t('common.loading') : t('auth.register')}
+      <Button
+        disabled={submitting}
+        loading={submitting}
+        onPress={handleSubmit}
+        style={styles.button}
+      >
+        {t('auth.register')}
       </Button>
 
       <Link href="/login" asChild style={styles.linkContainer}>
@@ -190,34 +207,45 @@ export default function RegisterScreen() {
 }
 
 const styles = StyleSheet.create({
+  brandHeader: {
+    marginBottom: spacing.xs,
+  },
   headerSpacer: {
-    height: 24,
+    height: spacing.md,
   },
   title: {
-    fontSize: 28,
-    fontWeight: 600,
-    marginBottom: 24,
+    fontSize: fontSize.display,
+    fontWeight: '700',
+    letterSpacing: -0.6,
+    marginBottom: spacing.xs,
+  },
+  subtitle: {
+    fontSize: fontSize.body,
+    marginBottom: spacing.xl,
+    lineHeight: 22,
+  },
+  formErrorContainer: {
+    marginBottom: spacing.md,
   },
   formError: {
-    fontSize: 12,
-    marginBottom: 20,
-    marginTop: 8,
+    fontSize: fontSize.caption,
   },
   button: {
     width: '100%',
-    marginTop: 8,
+    marginTop: spacing.xs,
   },
   secondaryButton: {
     width: '100%',
-    marginTop: 12,
+    marginTop: spacing.sm,
   },
   linkContainer: {
-    marginTop: 20,
+    marginTop: spacing.md,
   },
   legalLine: {
-    fontSize: 12,
-    marginTop: 24,
-    lineHeight: 16,
+    fontSize: fontSize.caption,
+    marginTop: spacing.xl,
+    lineHeight: 18,
     textAlign: 'center',
+    paddingHorizontal: spacing.sm,
   },
 });

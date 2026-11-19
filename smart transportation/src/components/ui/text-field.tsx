@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { useState } from 'react';
 
 import { useTheme } from '@/hooks/use-theme';
-import { fontSize, radius, spacing } from '@/constants/theme';
+import { fontSize, spacing } from '@/constants/theme';
 
 export type TextFieldProps = {
   label: string;
@@ -17,9 +17,12 @@ export type TextFieldProps = {
 };
 
 /**
- * Modern labeled text input: label above, helper/error text below, 48px high,
- * rounded container with focus state, error state with red border.
- * Optional secure-text show/hide eye toggle with translated accessibility label.
+ * 2026 Modern Text Input:
+ * - Floating feel with clear label above
+ * - Soft surfaceAlt fill, radius 14, 52px tall
+ * - 1.5px consistent accent border + focus background lift
+ * - Clean vertical centering with zero-padding to eliminate Android line-height shifts
+ * - Facebook-style clean vector eye toggle
  */
 export function TextField({
   label,
@@ -41,29 +44,37 @@ export function TextField({
     : focused
       ? theme.primary
       : theme.border;
+
   const toggleLabel = isSecure ? t('auth.showPassword') : t('auth.hidePassword');
 
   return (
     <View style={styles.field}>
       <Text style={[styles.label, { color: theme.textPrimary }]}>{label}</Text>
-      <View style={styles.inputContainer}>
+      <View
+        style={[
+          styles.inputContainer,
+          {
+            borderRadius: theme.radius.input,
+            backgroundColor: focused ? theme.surface : theme.surfaceAlt,
+            borderColor,
+          },
+        ]}
+      >
         <TextInput
           {...rest}
           accessibilityRole="text"
           autoCorrect={false}
-          blurOnSubmit={false}
           onBlur={() => setFocused(false)}
           onChangeText={onChangeText}
           onFocus={() => setFocused(true)}
           secureTextEntry={isSecure}
+          placeholderTextColor={theme.textSecondary}
           style={[
             styles.input,
             {
-              borderColor,
-              backgroundColor: theme.surfaceAlt,
               color: theme.textPrimary,
-              paddingEnd: secureTextEntry ? 46 : 14,
-              ...(focused && !hasError && { borderWidth: 1.5, borderColor: theme.primary }),
+              paddingStart: spacing.md,
+              paddingEnd: secureTextEntry ? 48 : spacing.md,
             },
           ]}
           value={value}
@@ -118,30 +129,30 @@ function EyeToggle({
 
 const styles = StyleSheet.create({
   field: {
-    marginBottom: spacing.sm,
+    marginBottom: spacing.md,
+    width: '100%',
   },
   label: {
-    fontSize: fontSize.sm,
-    fontWeight: 600,
+    fontSize: fontSize.label,
+    fontWeight: '600',
     marginBottom: spacing.xs,
   },
   inputContainer: {
     position: 'relative',
-    height: 48,
+    height: 52,
     justifyContent: 'center',
+    borderWidth: 1.5,
   },
   input: {
     width: '100%',
-    height: 48,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderWidth: 1,
-    borderRadius: radius.sm,
+    height: '100%',
+    fontSize: fontSize.body,
+    paddingVertical: 0,
     textAlignVertical: 'center',
   },
   eyeToggle: {
     position: 'absolute',
-    right: 12,
+    end: 14,
     top: 0,
     bottom: 0,
     width: 32,
@@ -149,11 +160,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   helperText: {
-    fontSize: fontSize.xs,
+    fontSize: fontSize.caption,
     marginTop: spacing.xs,
   },
   errorText: {
-    fontSize: fontSize.xs,
+    fontSize: fontSize.caption,
     marginTop: spacing.xs,
   },
 });

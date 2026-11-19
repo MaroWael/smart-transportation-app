@@ -1,18 +1,55 @@
-import { StyleSheet, View } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import {
+  AccessibilityInfo,
+  Animated,
+  StyleSheet,
+  View,
+} from 'react-native';
 
 import { useTheme } from '@/hooks/use-theme';
-import { Wordmark } from '@/components/ui/wordmark';
+import { BrandHeader } from '@/components/ui/brand-header';
 
 /**
- * Splash / loading overlay: just the wordmark centered in primary blue on the
- * background color, nothing else.
+ * 2026 Modern Loading / Splash Overlay:
+ * Clean brand header centered on the background with a gentle fade-in,
+ * fully respecting reduced-motion accessibility.
  */
 export function LoadingOverlay() {
   const theme = useTheme();
+  const [fadeAnim] = useState(() => new Animated.Value(0));
+  const [reduceMotion, setReduceMotion] = useState(false);
+
+  useEffect(() => {
+    let isMounted = true;
+    AccessibilityInfo.isReduceMotionEnabled()
+      .then((enabled) => {
+        if (isMounted) setReduceMotion(enabled);
+      })
+      .catch(() => {});
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (reduceMotion) {
+      fadeAnim.setValue(1);
+      return;
+    }
+
+    Animated.timing(fadeAnim, {
+      toValue: 1,
+      duration: 250,
+      useNativeDriver: true,
+    }).start();
+  }, [fadeAnim, reduceMotion]);
 
   return (
     <View style={[styles.overlay, { backgroundColor: theme.background }]}>
-      <Wordmark />
+      <Animated.View style={{ opacity: fadeAnim }}>
+        <BrandHeader />
+      </Animated.View>
     </View>
   );
 }

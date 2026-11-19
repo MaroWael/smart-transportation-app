@@ -1,19 +1,20 @@
 import { useState } from 'react';
-import {
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  TextInput,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { StyleSheet, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
+import { Ionicons } from '@expo/vector-icons';
 
-import { ThemedView } from '@/components/themed-view';
-import { ThemedText } from '@/components/themed-text';
+import {
+  Avatar,
+  Badge,
+  Button,
+  Card,
+  ListRow,
+  Screen,
+  Skeleton,
+  TextField,
+} from '@/components/ui';
 import { useTheme } from '@/hooks/use-theme';
-
+import { fontSize, spacing } from '@/constants/theme';
 import { useAuth } from '@/context/auth-context';
 
 const ROLE_LABELS: Record<string, string> = {
@@ -32,9 +33,8 @@ export default function ProfileScreen() {
     null
   );
   const [editFullName, setEditFullName] = useState(user?.fullName ?? '');
-  const [localFieldErrors, setLocalFieldErrors] = useState<Record<string, string>>(
-    {}
-  );
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [localFieldErrors, setLocalFieldErrors] = useState<Record<string, string>>({});
 
   const isLoading = status === 'loading';
 
@@ -65,23 +65,25 @@ export default function ProfileScreen() {
     setLocalFieldErrors({});
     setSaveStatus(null);
 
-    if (!editFullName) {
+    const trimmed = editFullName.trim();
+    if (!trimmed) {
       setFieldError('fullName', t('validation.required'));
       return;
     }
-    if (editFullName.length < 2) {
+    if (trimmed.length < 2) {
       setFieldError('fullName', t('validation.fullNameTooShort'));
       return;
     }
-    if (editFullName.length > 100) {
+    if (trimmed.length > 100) {
       setFieldError('fullName', t('validation.fullNameTooLong'));
       return;
     }
 
     setSubmitting(true);
     try {
-      await updateProfile(editFullName);
+      await updateProfile(trimmed);
       setSaveStatus('success');
+      setIsEditingName(false);
     } catch {
       setSaveStatus('error');
     } finally {
@@ -89,232 +91,286 @@ export default function ProfileScreen() {
     }
   };
 
-  const inputStyle = {
-    backgroundColor: theme.surfaceAlt,
-    color: theme.textPrimary,
-  };
-
   return (
-    <ThemedView type="background" style={styles.container}>
-      <SafeAreaView style={styles.safeArea}>
-        <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-          style={styles.keyboardAvoiding}
-        >
-          <ScrollView
-            contentContainerStyle={styles.scrollContainer}
-            keyboardShouldPersistTaps="handled"
-          >
-            <ThemedView style={styles.card}>
-              <ThemedText type="title" style={styles.title} accessibilityLabel={t('profile.title')}>
-                {t('profile.title')}
-              </ThemedText>
+    <Screen>
+      <Text style={[styles.screenTitle, { color: theme.textPrimary }]}>
+        {t('profile.title')}
+      </Text>
 
-              {isLoading && (
-                <ThemedText type="small" style={styles.subdued} accessibilityLabel={t('common.loading')}>
-                  {t('common.loading')}
-                </ThemedText>
-              )}
+      {/* Loading Skeleton State */}
+      {isLoading ? (
+        <View style={styles.contentGroup}>
+          <Card style={styles.headerCard} contentStyle={styles.headerCardContent}>
+            <Skeleton width={72} height={72} borderRadius={36} />
+            <Skeleton width={180} height={24} style={styles.skeletonMargin} />
+            <Skeleton width={220} height={16} style={styles.skeletonMarginSmall} />
+            <Skeleton width={100} height={28} borderRadius={14} style={styles.skeletonMargin} />
+          </Card>
+          <Card style={styles.settingsCard} contentStyle={styles.cardPadding}>
+            <Skeleton width="100%" height={48} style={styles.skeletonMarginSmall} />
+            <Skeleton width="100%" height={48} />
+          </Card>
+        </View>
+      ) : !user ? (
+        /* Error fallback state */
+        <Card style={styles.headerCard} contentStyle={styles.headerCardContent}>
+          <Text style={[styles.errorSubdued, { color: theme.textSecondary }]}>
+            {t('errors.somethingWentWrong')}
+          </Text>
+        </Card>
+      ) : (
+        /* Authenticated Profile Content */
+        <View style={styles.contentGroup}>
+          {/* Header Card: Initials Avatar, Name, Email, Role, Member Since */}
+          <Card style={styles.headerCard} contentStyle={styles.headerCardContent}>
+            <Avatar name={user.fullName ?? user.email} size={72} />
 
-              {!user && !isLoading ? (
-                <ThemedText type="small" style={styles.subdued} accessibilityLabel={t('errors.somethingWentWrong')}>
-                  {t('errors.somethingWentWrong')}
-                </ThemedText>
-              ) : (
-                <>
-                  <ThemedText
-                    type="smallBold"
-                    style={[styles.label, styles.marginTop]}
-                    accessibilityLabel={t('profile.fullName')}
-                  >
-                    {t('profile.fullName')}
-                  </ThemedText>
-                  <TextInput
-                    accessibilityLabel={t('profile.fullName')}
-                    accessibilityRole="text"
-                    autoCapitalize="words"
-                    autoCorrect={false}
-                    blurOnSubmit={false}
+            <Text style={[styles.nameText, { color: theme.textPrimary }]}>
+              {user.fullName || t('profile.fullName')}
+            </Text>
+
+            <Text style={[styles.emailText, { color: theme.textSecondary }]}>
+              {user.email}
+            </Text>
+
+            <View style={styles.badgeRow}>
+              <Badge label={roleLabel} variant="accent" size="sm" />
+            </View>
+
+            {memberSince ? (
+              <Text style={[styles.memberSinceText, { color: theme.textSecondary }]}>
+                {t('profile.memberSince')}: {memberSince}
+              </Text>
+            ) : null}
+          </Card>
+
+          {/* Settings Section: Edit name, Language, Logout */}
+          <View style={styles.section}>
+            <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>
+              {t('profile.settings')}
+            </Text>
+
+            <Card style={styles.settingsCard} contentStyle={styles.cardPadding}>
+              {/* Row 1: Edit Name */}
+              <ListRow
+                title={t('profile.editName')}
+                subtitle={user.fullName}
+                leading={
+                  <Ionicons name="person-outline" size={20} color={theme.primary} />
+                }
+                onPress={() => {
+                  setIsEditingName((prev) => !prev);
+                  setEditFullName(user.fullName ?? '');
+                  setSaveStatus(null);
+                }}
+              />
+
+              {/* Inline Edit Name Form Drawer */}
+              {isEditingName ? (
+                <View
+                  style={[
+                    styles.editDrawer,
+                    {
+                      borderTopColor: theme.surfaceAlt,
+                      backgroundColor: theme.surface,
+                    },
+                  ]}
+                >
+                  <TextField
+                    label={t('profile.editFullName')}
                     value={editFullName}
                     onChangeText={(text) => {
                       setEditFullName(text);
                       clearFieldError('fullName');
                     }}
-                    style={[styles.input, inputStyle]}
+                    placeholder={t('auth.fullNamePlaceholder')}
+                    error={localFieldErrors.fullName}
+                    autoCapitalize="words"
+                    accessibilityLabel={t('profile.editFullName')}
                   />
-                  {localFieldErrors.fullName && (
-                    <ThemedText
-                      type="small"
-                      style={styles.fieldError}
-                      accessibilityLabel={localFieldErrors.fullName}
-                    >
-                      {localFieldErrors.fullName}
-                    </ThemedText>
-                  )}
 
-                  <ThemedText
-                    type="smallBold"
-                    style={[styles.label, styles.marginTop]}
-                    accessibilityLabel={t('profile.email')}
-                  >
-                    {t('profile.email')}
-                  </ThemedText>
-                  <ThemedText type="default" style={styles.value} accessibilityLabel={user?.email ?? ''}>
-                    {user?.email ?? ''}
-                  </ThemedText>
-
-                  <ThemedText
-                    type="smallBold"
-                    style={[styles.label, styles.marginTop]}
-                    accessibilityLabel={t('profile.role')}
-                  >
-                    {t('profile.role')}
-                  </ThemedText>
-                  <ThemedText type="default" style={styles.value} accessibilityLabel={roleLabel}>
-                    {roleLabel}
-                  </ThemedText>
-
-                  <ThemedText
-                    type="smallBold"
-                    style={[styles.label, styles.marginTop]}
-                    accessibilityLabel={t('profile.memberSince')}
-                  >
-                    {t('profile.memberSince')}
-                  </ThemedText>
-                  <ThemedText type="default" style={styles.value} accessibilityLabel={memberSince ?? ''}>
-                    {memberSince ?? ''}
-                  </ThemedText>
-
-                  {saveStatus === 'success' && (
-                    <ThemedText
-                      type="small"
-                      style={styles.successText}
-                      accessibilityLabel={t('profile.updateSuccess')}
-                    >
-                      {t('profile.updateSuccess')}
-                    </ThemedText>
-                  )}
-                  {saveStatus === 'error' && (
-                    <ThemedText
-                      type="small"
-                      style={styles.errorText}
+                  {saveStatus === 'error' ? (
+                    <Text
+                      style={[styles.statusError, { color: theme.error }]}
                       accessibilityLabel={t('errors.somethingWentWrong')}
                     >
                       {t('errors.somethingWentWrong')}
-                    </ThemedText>
-                  )}
+                    </Text>
+                  ) : null}
 
-                  <Pressable
-                    accessibilityLabel={
-                      submitting ? t('common.loading') : t('profile.saveChanges')
-                    }
-                    accessibilityRole="button"
-                    disabled={submitting || saveStatus === 'success'}
-                    onPress={handleSave}
-                    style={[styles.button, submitting && styles.buttonDisabled]}
-                  >
-                    <ThemedText type="smallBold" style={styles.buttonText}>
-                      {submitting ? t('common.loading') : t('profile.saveChanges')}
-                    </ThemedText>
-                  </Pressable>
+                  <View style={styles.editActionsRow}>
+                    <Button
+                      variant="ghost"
+                      onPress={() => {
+                        setIsEditingName(false);
+                        setEditFullName(user.fullName ?? '');
+                        setLocalFieldErrors({});
+                      }}
+                      style={styles.cancelBtn}
+                    >
+                      {t('common.cancel')}
+                    </Button>
+                    <Button
+                      loading={submitting}
+                      disabled={submitting}
+                      onPress={handleSave}
+                      style={styles.saveBtn}
+                    >
+                      {t('common.save')}
+                    </Button>
+                  </View>
+                </View>
+              ) : null}
 
-                  <Pressable
-                    accessibilityLabel={t('common.logout')}
-                    accessibilityRole="button"
-                    style={styles.logoutButton}
-                    onPress={logout}
-                  >
-                    <ThemedText type="smallBold" style={styles.logoutText}>
-                      {t('common.logout')}
-                    </ThemedText>
-                  </Pressable>
-                </>
-              )}
-            </ThemedView>
-          </ScrollView>
-        </KeyboardAvoidingView>
-      </SafeAreaView>
-    </ThemedView>
+              {saveStatus === 'success' && !isEditingName ? (
+                <View style={styles.statusSuccessWrapper}>
+                  <Text style={[styles.statusSuccess, { color: theme.success }]}>
+                    {t('profile.updateSuccess')}
+                  </Text>
+                </View>
+              ) : null}
+
+              <View style={[styles.rowDivider, { backgroundColor: theme.surfaceAlt }]} />
+
+              {/* Row 2: Language (Disabled) */}
+              <ListRow
+                title={t('profile.language')}
+                leading={
+                  <Ionicons name="globe-outline" size={20} color={theme.primary} />
+                }
+                trailing={
+                  <Badge
+                    label={t('profile.languageEnglish')}
+                    variant="neutral"
+                    size="sm"
+                  />
+                }
+                disabled
+              />
+            </Card>
+          </View>
+
+          {/* Account Actions: Logout */}
+          <View style={styles.section}>
+            <Card style={styles.settingsCard} contentStyle={styles.cardPadding}>
+              <ListRow
+                title={t('profile.logoutDestructive')}
+                leading={
+                  <Ionicons name="log-out-outline" size={20} color={theme.error} />
+                }
+                destructive
+                onPress={logout}
+                accessibilityLabel={t('common.logout')}
+              />
+            </Card>
+          </View>
+        </View>
+      )}
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
+  screenTitle: {
+    fontSize: fontSize.display,
+    fontWeight: '700',
+    letterSpacing: -0.6,
+    marginBottom: spacing.lg,
   },
-  safeArea: {
-    flex: 1,
+  contentGroup: {
+    width: '100%',
   },
-  keyboardAvoiding: {
-    flex: 1,
+  headerCard: {
+    width: '100%',
+    marginBottom: spacing.xl,
   },
-  scrollContainer: {
-    flexGrow: 1,
-    justifyContent: 'center',
-    paddingHorizontal: 24,
+  headerCardContent: {
+    alignItems: 'center',
+    paddingVertical: spacing.xl,
+    paddingHorizontal: spacing.lg,
   },
-  card: {
+  nameText: {
+    fontSize: fontSize.title,
+    fontWeight: '700',
+    letterSpacing: -0.3,
+    marginTop: spacing.md,
+    textAlign: 'center',
+  },
+  emailText: {
+    fontSize: fontSize.body,
+    marginTop: spacing.xs,
+    textAlign: 'center',
+  },
+  badgeRow: {
+    marginTop: spacing.md,
     alignItems: 'center',
   },
-  title: {
-    marginBottom: 32,
+  memberSinceText: {
+    fontSize: fontSize.caption,
+    marginTop: spacing.md,
     textAlign: 'center',
   },
-  label: {
-    alignSelf: 'flex-start',
-    marginBottom: 8,
+  section: {
+    marginBottom: spacing.xl,
   },
-  marginTop: {
-    marginTop: 24,
+  sectionTitle: {
+    fontSize: fontSize.label,
+    fontWeight: '600',
+    marginBottom: spacing.sm,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
-  input: {
+  settingsCard: {
     width: '100%',
-    minHeight: 48,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderRadius: 8,
-    marginBottom: 8,
-    textAlignVertical: 'center',
   },
-  fieldError: {
-    alignSelf: 'flex-start',
-    marginBottom: 16,
+  cardPadding: {
+    paddingVertical: spacing.xs,
+    paddingHorizontal: 0,
   },
-  errorText: {
-    alignSelf: 'flex-start',
-    marginBottom: 16,
+  rowDivider: {
+    height: 1,
+    marginHorizontal: spacing.md,
   },
-  successText: {
-    alignSelf: 'flex-start',
-    marginBottom: 16,
+  editDrawer: {
+    borderTopWidth: 1,
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.md,
+    paddingBottom: spacing.sm,
   },
-  value: {
-    width: '100%',
-    textAlign: 'center',
-    marginBottom: 8,
+  editActionsRow: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: spacing.sm,
+    marginTop: spacing.xs,
   },
-  subdued: {
-    textAlign: 'center',
-    marginBottom: 16,
+  cancelBtn: {
+    height: 48,
+    paddingHorizontal: spacing.md,
   },
-  button: {
-    width: '100%',
-    minHeight: 48,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderRadius: 8,
-    marginTop: 24,
+  saveBtn: {
+    height: 48,
+    minWidth: 100,
   },
-  buttonDisabled: {
-    opacity: 0.6,
+  statusError: {
+    fontSize: fontSize.caption,
+    marginBottom: spacing.sm,
   },
-  buttonText: {
-    textAlign: 'center',
+  statusSuccessWrapper: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
   },
-  logoutButton: {
-    marginTop: 20,
+  statusSuccess: {
+    fontSize: fontSize.caption,
+    fontWeight: '600',
   },
-  logoutText: {
+  skeletonMargin: {
+    marginTop: spacing.md,
+  },
+  skeletonMarginSmall: {
+    marginTop: spacing.xs,
+  },
+  errorSubdued: {
+    fontSize: fontSize.body,
     textAlign: 'center',
   },
 });

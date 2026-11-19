@@ -9,7 +9,7 @@ export type WordmarkProps = {
 };
 
 /**
- * App wordmark: t('common.appName') in primary blue, semibold 20.
+ * 2026 App Wordmark: t('common.appName') in bold brand primary with tight letter-spacing.
  */
 export function Wordmark({ style }: WordmarkProps) {
   const { t } = useTranslation();
@@ -19,7 +19,7 @@ export function Wordmark({ style }: WordmarkProps) {
     <Text
       style={[
         styles.wordmark,
-        { color: theme.primary, fontSize: fontSize.lg, fontWeight: 600 },
+        { color: theme.primary, fontSize: fontSize.title },
         style,
       ]}
     >
@@ -30,6 +30,7 @@ export function Wordmark({ style }: WordmarkProps) {
 
 const styles = StyleSheet.create({
   wordmark: {
-    letterSpacing: -0.5,
+    fontWeight: '700',
+    letterSpacing: -0.6,
   },
 });

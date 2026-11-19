@@ -1,13 +1,18 @@
+import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
+import { Ionicons } from '@expo/vector-icons';
 
 import { useTheme } from '@/hooks/use-theme';
 import { fontSize, spacing } from '@/constants/theme';
-import { Wordmark } from '@/components/ui/wordmark';
 import { Button } from '@/components/ui/button';
-
+import { BrandHeader } from '@/components/ui/brand-header';
 import { useAuth } from '@/context/auth-context';
 
+/**
+ * 2026 Modern Offline / Retry Overlay:
+ * Soft tinted circle with error glyph, clear typography hierarchy, and primary retry button.
+ */
 export function RetryOverlay() {
   const { t } = useTranslation();
   const theme = useTheme();
@@ -15,25 +20,27 @@ export function RetryOverlay() {
 
   return (
     <View style={[styles.overlay, { backgroundColor: theme.background }]}>
-      <Wordmark />
-      <ErrorIcon />
-      <Text style={[styles.title, { color: theme.textPrimary }]}>{t('errors.offline')}</Text>
-      <Text style={[styles.body, { color: theme.textSecondary }]}>{t('errors.networkError')}</Text>
+      <BrandHeader style={styles.brandHeader} />
+
+      <View
+        style={[
+          styles.errorCircle,
+          { backgroundColor: theme.accentSoft },
+        ]}
+      >
+        <Ionicons name="cloud-offline-outline" size={32} color={theme.error} />
+      </View>
+
+      <Text style={[styles.title, { color: theme.textPrimary }]}>
+        {t('errors.offline')}
+      </Text>
+      <Text style={[styles.body, { color: theme.textSecondary }]}>
+        {t('errors.networkError')}
+      </Text>
+
       <Button onPress={refreshUser} style={styles.button}>
         {t('common.tryAgain')}
       </Button>
-    </View>
-  );
-}
-
-function ErrorIcon() {
-  const theme = useTheme();
-
-  return (
-    <View style={styles.iconContainer}>
-      <View style={[styles.iconOuter, { borderColor: theme.error }]} />
-      <View style={[styles.iconBar, { backgroundColor: theme.error }]} />
-      <View style={[styles.iconDot, { backgroundColor: theme.error }]} />
     </View>
   );
 }
@@ -44,44 +51,34 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: spacing.lg,
-    gap: spacing.md,
   },
-  iconContainer: {
-    marginBottom: spacing.sm,
-  },
-  iconOuter: {
-    width: 52,
-    height: 52,
-    borderWidth: 2,
-    borderRadius: 26,
-  },
-  iconBar: {
-    width: 2,
-    height: 20,
+  brandHeader: {
     position: 'absolute',
-    top: 14,
-    left: 25,
+    top: 60,
   },
-  iconDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    position: 'absolute',
-    top: 36,
-    left: 22,
+  errorCircle: {
+    width: 68,
+    height: 68,
+    borderRadius: 34,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: spacing.md,
   },
   title: {
-    fontSize: fontSize.lg,
-    fontWeight: 600,
+    fontSize: fontSize.title,
+    fontWeight: '700',
+    letterSpacing: -0.3,
     textAlign: 'center',
+    marginBottom: spacing.xs,
   },
   body: {
-    fontSize: fontSize.sm,
+    fontSize: fontSize.body,
     textAlign: 'center',
+    lineHeight: 22,
+    marginBottom: spacing.lg,
+    maxWidth: 300,
   },
   button: {
-    width: 200,
-    alignSelf: 'center',
-    marginTop: spacing.sm,
+    width: 220,
   },
 });

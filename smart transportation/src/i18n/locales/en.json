@@ -23,7 +23,8 @@
     "loginTitle": "Log in to your account",
     "registerTitle": "Create an account",
     "welcomeBack": "Welcome back",
-    "loginSubtitle": "Sign in to your account",
+    "loginSubtitle": "Sign in to plan journeys and manage your transit passes",
+    "registerSubtitle": "Join Smart Transportation for fast, seamless transit",
     "emailPlaceholder": "Enter your email",
     "passwordPlaceholder": "Enter your password",
     "fullNamePlaceholder": "Enter your full name",
@@ -40,6 +41,21 @@
     "loginSuccess": "Logged in successfully",
     "registerSuccess": "Account created successfully"
   },
+  "home": {
+    "greeting": "Hello, {{name}}",
+    "greetingGuest": "Welcome, Traveler",
+    "subtitle": "Where would you like to travel today?",
+    "whereTo": "Where to?",
+    "whereToPlaceholder": "Search stations, lines, or routes…",
+    "quickActions": "Quick actions",
+    "metroLines": "Metro lines",
+    "buses": "Buses",
+    "myTickets": "My tickets",
+    "comingSoon": "Coming soon",
+    "recentJourneys": "Recent journeys",
+    "noRecentJourneys": "No recent journeys yet",
+    "noRecentJourneysSubtitle": "Your trips, favourite stops, and ticket validations will show up here."
+  },
   "profile": {
     "title": "Profile",
     "fullName": "Full name",
@@ -52,7 +68,14 @@
     "saveChanges": "Save changes",
     "logoutButton": "Logout",
     "memberSince": "Member since",
-    "updateSuccess": "Profile updated"
+    "updateSuccess": "Profile updated",
+    "settings": "Settings",
+    "account": "Account",
+    "preferences": "Preferences",
+    "editName": "Edit name",
+    "language": "Language",
+    "languageEnglish": "English",
+    "logoutDestructive": "Log out"
   },
   "errors": {
     "offline": "You're offline",

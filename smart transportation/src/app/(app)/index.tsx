@@ -1,95 +1,312 @@
-import * as Device from 'expo-device';
-import { Platform, StyleSheet } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import React from 'react';
+import { StyleSheet, Text, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
+import { Ionicons } from '@expo/vector-icons';
 
-import { AnimatedIcon } from '@/components/animated-icon';
-import { HintRow } from '@/components/hint-row';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { WebBadge } from '@/components/web-badge';
-import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
-
-function getDevMenuHint() {
-  if (Platform.OS === 'web') {
-    return <ThemedText type="small">use browser devtools</ThemedText>;
-  }
-  if (Device.isDevice) {
-    return (
-      <ThemedText type="small">
-        shake device or press <ThemedText type="code">m</ThemedText> in terminal
-      </ThemedText>
-    );
-  }
-  const shortcut = Platform.OS === 'android' ? 'cmd+m (or ctrl+m)' : 'cmd+d';
-  return (
-    <ThemedText type="small">
-      press <ThemedText type="code">{shortcut}</ThemedText>
-    </ThemedText>
-  );
-}
+import { Screen, Card, Badge, Avatar } from '@/components/ui';
+import { useTheme } from '@/hooks/use-theme';
+import { fontSize, spacing } from '@/constants/theme';
+import { useAuth } from '@/context/auth-context';
 
 export default function HomeScreen() {
+  const { t } = useTranslation();
+  const theme = useTheme();
+  const { user } = useAuth();
+
+  const firstName = user?.fullName?.trim()?.split(/\s+/)?.[0] ?? '';
+  const greeting = firstName
+    ? t('home.greeting', { name: firstName })
+    : t('home.greetingGuest');
+
   return (
-    <ThemedView style={styles.container}>
-      <SafeAreaView style={styles.safeArea}>
-        <ThemedView style={styles.heroSection}>
-          <AnimatedIcon />
-          <ThemedText type="title" style={styles.title}>
-            Welcome to&nbsp;Smart Transportation
-          </ThemedText>
-        </ThemedView>
+    <Screen>
+      {/* Top Bar: User Greeting + Avatar */}
+      <View style={styles.topHeader}>
+        <View style={styles.greetingContainer}>
+          <Text style={[styles.greetingTitle, { color: theme.textPrimary }]}>
+            {greeting}
+          </Text>
+          <Text style={[styles.greetingSubtitle, { color: theme.textSecondary }]}>
+            {t('home.subtitle')}
+          </Text>
+        </View>
+        <Avatar name={user?.fullName ?? user?.email ?? ''} size={44} />
+      </View>
 
-        <ThemedText type="code" style={styles.code}>
-          get started
-        </ThemedText>
-
-        <ThemedView type="surfaceAlt" style={styles.stepContainer}>
-          <HintRow title="Try editing" hint={<ThemedText type="code">src/app/(app)/index.tsx</ThemedText>} />
-          <HintRow title="Dev tools" hint={getDevMenuHint()} />
-          <HintRow
-            title="Fresh start"
-            hint={<ThemedText type="code">npm run reset-project</ThemedText>}
+      {/* Prominent "Where to?" Search Card */}
+      <View style={styles.searchSection}>
+        {/* TODO: Wire up route planner / station search sheet when search API is implemented */}
+        <Card
+          onPress={() => {
+            // TODO: Route search / journey planner implementation
+          }}
+          accessibilityLabel={t('home.whereTo')}
+          style={styles.searchCard}
+          contentStyle={styles.searchCardContent}
+        >
+          <View
+            style={[
+              styles.searchIconCircle,
+              { backgroundColor: theme.accentSoft },
+            ]}
+          >
+            <Ionicons name="search" size={20} color={theme.primary} />
+          </View>
+          <View style={styles.searchTextWrapper}>
+            <Text style={[styles.searchTitle, { color: theme.textPrimary }]}>
+              {t('home.whereTo')}
+            </Text>
+            <Text
+              style={[styles.searchPlaceholder, { color: theme.textSecondary }]}
+              numberOfLines={1}
+            >
+              {t('home.whereToPlaceholder')}
+            </Text>
+          </View>
+          <Ionicons
+            name="arrow-forward-circle"
+            size={24}
+            color={theme.primary}
+            style={styles.searchTrailing}
           />
-        </ThemedView>
+        </Card>
+      </View>
 
-        {Platform.OS === 'web' && <WebBadge />}
-      </SafeAreaView>
-    </ThemedView>
+      {/* Quick Actions Row */}
+      <View style={styles.section}>
+        <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>
+          {t('home.quickActions')}
+        </Text>
+        <View style={styles.quickActionsRow}>
+          {/* Action 1: Metro lines */}
+          <Card
+            variant="default"
+            disabled
+            accessibilityLabel={`${t('home.metroLines')} - ${t('home.comingSoon')}`}
+            style={styles.actionCard}
+            contentStyle={styles.actionCardContent}
+          >
+            <View
+              style={[
+                styles.actionIconCircle,
+                { backgroundColor: theme.surfaceAlt },
+              ]}
+            >
+              <Ionicons name="subway-outline" size={20} color={theme.textSecondary} />
+            </View>
+            <Text style={[styles.actionLabel, { color: theme.textPrimary }]}>
+              {t('home.metroLines')}
+            </Text>
+            <Badge
+              label={t('home.comingSoon')}
+              variant="neutral"
+              size="sm"
+              style={styles.comingSoonBadge}
+            />
+          </Card>
+
+          {/* Action 2: Buses */}
+          <Card
+            variant="default"
+            disabled
+            accessibilityLabel={`${t('home.buses')} - ${t('home.comingSoon')}`}
+            style={styles.actionCard}
+            contentStyle={styles.actionCardContent}
+          >
+            <View
+              style={[
+                styles.actionIconCircle,
+                { backgroundColor: theme.surfaceAlt },
+              ]}
+            >
+              <Ionicons name="bus-outline" size={20} color={theme.textSecondary} />
+            </View>
+            <Text style={[styles.actionLabel, { color: theme.textPrimary }]}>
+              {t('home.buses')}
+            </Text>
+            <Badge
+              label={t('home.comingSoon')}
+              variant="neutral"
+              size="sm"
+              style={styles.comingSoonBadge}
+            />
+          </Card>
+
+          {/* Action 3: My tickets */}
+          <Card
+            variant="default"
+            disabled
+            accessibilityLabel={`${t('home.myTickets')} - ${t('home.comingSoon')}`}
+            style={styles.actionCard}
+            contentStyle={styles.actionCardContent}
+          >
+            <View
+              style={[
+                styles.actionIconCircle,
+                { backgroundColor: theme.surfaceAlt },
+              ]}
+            >
+              <Ionicons name="ticket-outline" size={20} color={theme.textSecondary} />
+            </View>
+            <Text style={[styles.actionLabel, { color: theme.textPrimary }]}>
+              {t('home.myTickets')}
+            </Text>
+            <Badge
+              label={t('home.comingSoon')}
+              variant="neutral"
+              size="sm"
+              style={styles.comingSoonBadge}
+            />
+          </Card>
+        </View>
+      </View>
+
+      {/* Recent Journeys Section */}
+      <View style={styles.section}>
+        <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>
+          {t('home.recentJourneys')}
+        </Text>
+        <Card style={styles.emptyCard} contentStyle={styles.emptyCardContent}>
+          <View
+            style={[
+              styles.emptyIconCircle,
+              { backgroundColor: theme.accentSoft },
+            ]}
+          >
+            <Ionicons name="navigate-outline" size={28} color={theme.primary} />
+          </View>
+          <Text style={[styles.emptyTitle, { color: theme.textPrimary }]}>
+            {t('home.noRecentJourneys')}
+          </Text>
+          <Text style={[styles.emptySubtitle, { color: theme.textSecondary }]}>
+            {t('home.noRecentJourneysSubtitle')}
+          </Text>
+        </Card>
+      </View>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: 'center',
+  topHeader: {
     flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: spacing.lg,
   },
-  safeArea: {
+  greetingContainer: {
     flex: 1,
-    paddingHorizontal: Spacing.four,
-    alignItems: 'center',
-    gap: Spacing.three,
-    paddingBottom: BottomTabInset + Spacing.three,
-    maxWidth: MaxContentWidth,
+    marginEnd: spacing.md,
   },
-  heroSection: {
+  greetingTitle: {
+    fontSize: fontSize.display,
+    fontWeight: '700',
+    letterSpacing: -0.6,
+  },
+  greetingSubtitle: {
+    fontSize: fontSize.body,
+    marginTop: spacing.xs,
+  },
+  searchSection: {
+    marginBottom: spacing.xl,
+  },
+  searchCard: {
+    width: '100%',
+  },
+  searchCardContent: {
+    flexDirection: 'row',
     alignItems: 'center',
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.md,
+  },
+  searchIconCircle: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     justifyContent: 'center',
-    flex: 1,
-    paddingHorizontal: Spacing.four,
-    gap: Spacing.four,
+    alignItems: 'center',
+    marginEnd: spacing.md,
   },
-  title: {
+  searchTextWrapper: {
+    flex: 1,
+    justifyContent: 'center',
+  },
+  searchTitle: {
+    fontSize: fontSize.title,
+    fontWeight: '600',
+    letterSpacing: -0.3,
+  },
+  searchPlaceholder: {
+    fontSize: fontSize.caption,
+    marginTop: 2,
+  },
+  searchTrailing: {
+    marginStart: spacing.sm,
+  },
+  section: {
+    marginBottom: spacing.xl,
+  },
+  sectionTitle: {
+    fontSize: fontSize.label,
+    fontWeight: '600',
+    marginBottom: spacing.sm,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  quickActionsRow: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+  },
+  actionCard: {
+    flex: 1,
+  },
+  actionCardContent: {
+    alignItems: 'center',
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.xs,
+  },
+  actionIconCircle: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: spacing.xs,
+  },
+  actionLabel: {
+    fontSize: fontSize.caption,
+    fontWeight: '600',
+    marginBottom: spacing.xs,
     textAlign: 'center',
   },
-  code: {
-    textTransform: 'uppercase',
+  comingSoonBadge: {
+    marginTop: 2,
   },
-  stepContainer: {
-    gap: Spacing.three,
-    alignSelf: 'stretch',
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.four,
-    borderRadius: Spacing.four,
+  emptyCard: {
+    width: '100%',
+  },
+  emptyCardContent: {
+    alignItems: 'center',
+    paddingVertical: spacing.xl,
+    paddingHorizontal: spacing.lg,
+  },
+  emptyIconCircle: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: spacing.md,
+  },
+  emptyTitle: {
+    fontSize: fontSize.body,
+    fontWeight: '600',
+    marginBottom: spacing.xs,
+    textAlign: 'center',
+  },
+  emptySubtitle: {
+    fontSize: fontSize.caption,
+    textAlign: 'center',
+    lineHeight: 18,
   },
 });
