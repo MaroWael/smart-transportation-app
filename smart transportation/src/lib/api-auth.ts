@@ -89,7 +89,7 @@ export async function register(
 export async function fetchMe(token: string): Promise<User> {
   const data = await requestWithTimeout<{
     status: string;
-    data?: User;
+    data?: { user: User } | User;
     message?: string;
   }>(`${API_BASE_URL}/auth/me`, {
     headers: getAuthHeaders(token),
@@ -98,7 +98,8 @@ export async function fetchMe(token: string): Promise<User> {
   if (data.status !== 'ok' || !data.data) {
     throw new ApiError(400, data.message ?? 'Invalid response', data);
   }
-  return data.data;
+  const user = 'user' in data.data && data.data.user ? data.data.user : (data.data as User);
+  return user;
 }
 
 export async function updateProfile(
@@ -107,7 +108,7 @@ export async function updateProfile(
 ): Promise<User> {
   const data = await requestWithTimeout<{
     status: string;
-    data?: User;
+    data?: { user: User } | User;
     message?: string;
   }>(`${API_BASE_URL}/auth/me`, {
     headers: {
@@ -120,7 +121,8 @@ export async function updateProfile(
   if (data.status !== 'ok' || !data.data) {
     throw new ApiError(400, data.message ?? 'Update failed', data);
   }
-  return data.data;
+  const user = 'user' in data.data && data.data.user ? data.data.user : (data.data as User);
+  return user;
 }
 
 export function extractApiError(err: unknown): {

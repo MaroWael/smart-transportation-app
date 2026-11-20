@@ -51,6 +51,7 @@ export default function ProfileScreen() {
 
   const clearFieldError = (field: string) => {
     setLocalFieldErrors((prev) => {
+      if (!prev[field]) return prev;
       const next = { ...prev };
       delete next[field];
       return next;

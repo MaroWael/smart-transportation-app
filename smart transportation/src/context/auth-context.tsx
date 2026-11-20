@@ -172,7 +172,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setFieldErrors(null);
     try {
       const me = await fetchMe(token);
-      setUser(me);
+      const userObj = (me as any)?.user ?? me;
+      setUser(userObj);
       setStatus('authenticated');
       setError(null);
     } catch (err) {
@@ -198,7 +199,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setFieldErrors(null);
       try {
         const me = await updateProfile(token, fullName);
-        setUser(me);
+        const userObj = (me as any)?.user ?? me;
+        setUser(userObj);
         setError(null);
       } catch (err) {
         const apiErr = err as ApiError;
