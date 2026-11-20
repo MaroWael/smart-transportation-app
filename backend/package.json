@@ -13,6 +13,7 @@
     "prisma:migrate": "prisma migrate dev",
     "prisma:studio": "prisma studio",
     "prisma:seed": "tsx prisma/seed.ts",
+    "prisma:seed:transport": "tsx prisma/seed-transport.ts",
     "test": "vitest run",
     "prisma:check": "tsx src/utils/check-db.ts",
     "vercel:build": "vercel build"

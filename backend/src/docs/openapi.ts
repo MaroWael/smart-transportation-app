@@ -16,6 +16,9 @@ export const openapi = {
   tags: [
     { name: "health", description: "Application health check" },
     { name: "auth", description: "Authentication (stateless JWT)" },
+    { name: "metro", description: "Cairo Metro lines and stations" },
+    { name: "stations", description: "Stations directory and search" },
+    { name: "bus", description: "Cairo Bus routes and stops" },
   ],
   paths: {
     "/api/health": {
@@ -271,6 +274,245 @@ export const openapi = {
         },
       },
     },
+    "/api/metro/lines": {
+      get: {
+        tags: ["metro"],
+        summary: "List all metro lines",
+        description: "Returns all metro lines ordered by line number, including station counts.",
+        operationId: "getMetroLines",
+        security: [{ bearerAuth: [] }],
+        responses: {
+          "200": {
+            description: "List of metro lines",
+            content: {
+              "application/json": {
+                schema: {
+                  $ref: "#/components/schemas/MetroLinesResponse",
+                },
+              },
+            },
+          },
+          "401": {
+            description: "Unauthorized (missing or invalid token)",
+            content: {
+              "application/json": {
+                schema: {
+                  $ref: "#/components/schemas/ErrorResponse",
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+    "/api/metro/lines/{id}": {
+      get: {
+        tags: ["metro"],
+        summary: "Get metro line details",
+        description: "Returns a single metro line with ordered stations and interchange details.",
+        operationId: "getMetroLineById",
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          {
+            name: "id",
+            in: "path",
+            required: true,
+            description: "Metro line UUID",
+            schema: { type: "string", format: "uuid" },
+          },
+        ],
+        responses: {
+          "200": {
+            description: "Metro line details with stations",
+            content: {
+              "application/json": {
+                schema: {
+                  $ref: "#/components/schemas/MetroLineDetailResponse",
+                },
+              },
+            },
+          },
+          "400": {
+            description: "Invalid UUID parameter",
+            content: {
+              "application/json": {
+                schema: {
+                  $ref: "#/components/schemas/ErrorResponse",
+                },
+              },
+            },
+          },
+          "401": {
+            description: "Unauthorized (missing or invalid token)",
+            content: {
+              "application/json": {
+                schema: {
+                  $ref: "#/components/schemas/ErrorResponse",
+                },
+              },
+            },
+          },
+          "404": {
+            description: "Metro line not found",
+            content: {
+              "application/json": {
+                schema: {
+                  $ref: "#/components/schemas/ErrorResponse",
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+    "/api/stations": {
+      get: {
+        tags: ["stations"],
+        summary: "List or search stations",
+        description: "Returns all stations with lines summary. Supports search by query string (q) and line filter (lineId).",
+        operationId: "getStations",
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          {
+            name: "q",
+            in: "query",
+            required: false,
+            description: "Case-insensitive station name search query",
+            schema: { type: "string" },
+          },
+          {
+            name: "lineId",
+            in: "query",
+            required: false,
+            description: "Filter stations by metro line UUID",
+            schema: { type: "string", format: "uuid" },
+          },
+        ],
+        responses: {
+          "200": {
+            description: "List of stations",
+            content: {
+              "application/json": {
+                schema: {
+                  $ref: "#/components/schemas/StationsResponse",
+                },
+              },
+            },
+          },
+          "400": {
+            description: "Invalid query parameters",
+            content: {
+              "application/json": {
+                schema: {
+                  $ref: "#/components/schemas/ErrorResponse",
+                },
+              },
+            },
+          },
+          "401": {
+            description: "Unauthorized (missing or invalid token)",
+            content: {
+              "application/json": {
+                schema: {
+                  $ref: "#/components/schemas/ErrorResponse",
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+    "/api/bus/routes": {
+      get: {
+        tags: ["bus"],
+        summary: "List all bus routes",
+        description: "Returns all bus routes ordered by code, including stop counts.",
+        operationId: "getBusRoutes",
+        security: [{ bearerAuth: [] }],
+        responses: {
+          "200": {
+            description: "List of bus routes",
+            content: {
+              "application/json": {
+                schema: {
+                  $ref: "#/components/schemas/BusRoutesResponse",
+                },
+              },
+            },
+          },
+          "401": {
+            description: "Unauthorized (missing or invalid token)",
+            content: {
+              "application/json": {
+                schema: {
+                  $ref: "#/components/schemas/ErrorResponse",
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+    "/api/bus/routes/{id}": {
+      get: {
+        tags: ["bus"],
+        summary: "Get bus route details",
+        description: "Returns a single bus route with ordered stops.",
+        operationId: "getBusRouteById",
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          {
+            name: "id",
+            in: "path",
+            required: true,
+            description: "Bus route UUID",
+            schema: { type: "string", format: "uuid" },
+          },
+        ],
+        responses: {
+          "200": {
+            description: "Bus route details with stops",
+            content: {
+              "application/json": {
+                schema: {
+                  $ref: "#/components/schemas/BusRouteDetailResponse",
+                },
+              },
+            },
+          },
+          "400": {
+            description: "Invalid UUID parameter",
+            content: {
+              "application/json": {
+                schema: {
+                  $ref: "#/components/schemas/ErrorResponse",
+                },
+              },
+            },
+          },
+          "401": {
+            description: "Unauthorized (missing or invalid token)",
+            content: {
+              "application/json": {
+                schema: {
+                  $ref: "#/components/schemas/ErrorResponse",
+                },
+              },
+            },
+          },
+          "404": {
+            description: "Bus route not found",
+            content: {
+              "application/json": {
+                schema: {
+                  $ref: "#/components/schemas/ErrorResponse",
+                },
+              },
+            },
+          },
+        },
+      },
+    },
   },
   components: {
     securitySchemes: {
@@ -361,6 +603,164 @@ export const openapi = {
             },
             required: ["user"],
           },
+        },
+        required: ["status", "data"],
+      },
+      StationLineSummary: {
+        type: "object",
+        properties: {
+          id: { type: "string", format: "uuid" },
+          number: { type: "integer", example: 1 },
+          color: { type: "string", example: "#D32F2F" },
+        },
+        required: ["id", "number", "color"],
+      },
+      MetroLine: {
+        type: "object",
+        properties: {
+          id: { type: "string", format: "uuid" },
+          number: { type: "integer", example: 1 },
+          nameEn: { type: "string", example: "Line 1 (Helwan - New El-Marg)" },
+          color: { type: "string", example: "#D32F2F" },
+          stationCount: { type: "integer", example: 35 },
+          createdAt: { type: "string", format: "date-time" },
+          updatedAt: { type: "string", format: "date-time" },
+        },
+        required: ["id", "number", "nameEn", "color", "stationCount", "createdAt", "updatedAt"],
+      },
+      MetroLineStationItem: {
+        type: "object",
+        properties: {
+          id: { type: "string", format: "uuid" },
+          nameEn: { type: "string", example: "Sadat" },
+          lat: { type: "number", example: 30.0444 },
+          lng: { type: "number", example: 31.2357 },
+          order: { type: "integer", example: 19 },
+          lines: {
+            type: "array",
+            items: { $ref: "#/components/schemas/StationLineSummary" },
+          },
+          isInterchange: { type: "boolean", example: true },
+        },
+        required: ["id", "nameEn", "lat", "lng", "order", "lines", "isInterchange"],
+      },
+      MetroLineDetail: {
+        type: "object",
+        properties: {
+          id: { type: "string", format: "uuid" },
+          number: { type: "integer", example: 1 },
+          nameEn: { type: "string", example: "Line 1 (Helwan - New El-Marg)" },
+          color: { type: "string", example: "#D32F2F" },
+          stations: {
+            type: "array",
+            items: { $ref: "#/components/schemas/MetroLineStationItem" },
+          },
+          createdAt: { type: "string", format: "date-time" },
+          updatedAt: { type: "string", format: "date-time" },
+        },
+        required: ["id", "number", "nameEn", "color", "stations", "createdAt", "updatedAt"],
+      },
+      MetroLinesResponse: {
+        type: "object",
+        properties: {
+          status: { type: "string", example: "ok" },
+          data: {
+            type: "array",
+            items: { $ref: "#/components/schemas/MetroLine" },
+          },
+        },
+        required: ["status", "data"],
+      },
+      MetroLineDetailResponse: {
+        type: "object",
+        properties: {
+          status: { type: "string", example: "ok" },
+          data: { $ref: "#/components/schemas/MetroLineDetail" },
+        },
+        required: ["status", "data"],
+      },
+      Station: {
+        type: "object",
+        properties: {
+          id: { type: "string", format: "uuid" },
+          nameEn: { type: "string", example: "Sadat" },
+          lat: { type: "number", example: 30.0444 },
+          lng: { type: "number", example: 31.2357 },
+          lines: {
+            type: "array",
+            items: { $ref: "#/components/schemas/StationLineSummary" },
+          },
+          isInterchange: { type: "boolean", example: true },
+          createdAt: { type: "string", format: "date-time" },
+          updatedAt: { type: "string", format: "date-time" },
+        },
+        required: ["id", "nameEn", "lat", "lng", "lines", "isInterchange", "createdAt", "updatedAt"],
+      },
+      StationsResponse: {
+        type: "object",
+        properties: {
+          status: { type: "string", example: "ok" },
+          data: {
+            type: "array",
+            items: { $ref: "#/components/schemas/Station" },
+          },
+        },
+        required: ["status", "data"],
+      },
+      BusRoute: {
+        type: "object",
+        properties: {
+          id: { type: "string", format: "uuid" },
+          code: { type: "string", example: "BUS-101" },
+          nameEn: { type: "string", example: "Tahrir - Nasr City - New Cairo" },
+          stopCount: { type: "integer", example: 8 },
+          createdAt: { type: "string", format: "date-time" },
+          updatedAt: { type: "string", format: "date-time" },
+        },
+        required: ["id", "code", "nameEn", "stopCount", "createdAt", "updatedAt"],
+      },
+      BusStopItem: {
+        type: "object",
+        properties: {
+          id: { type: "string", format: "uuid" },
+          nameEn: { type: "string", example: "Abdel Moneim Riad Terminal" },
+          lat: { type: "number", example: 30.0485 },
+          lng: { type: "number", example: 31.2335 },
+          order: { type: "integer", example: 1 },
+        },
+        required: ["id", "nameEn", "lat", "lng", "order"],
+      },
+      BusRouteDetail: {
+        type: "object",
+        properties: {
+          id: { type: "string", format: "uuid" },
+          code: { type: "string", example: "BUS-101" },
+          nameEn: { type: "string", example: "Tahrir - Nasr City - New Cairo" },
+          stops: {
+            type: "array",
+            items: { $ref: "#/components/schemas/BusStopItem" },
+          },
+          createdAt: { type: "string", format: "date-time" },
+          updatedAt: { type: "string", format: "date-time" },
+        },
+        required: ["id", "code", "nameEn", "stops", "createdAt", "updatedAt"],
+      },
+      BusRoutesResponse: {
+        type: "object",
+        properties: {
+          status: { type: "string", example: "ok" },
+          data: {
+            type: "array",
+            items: { $ref: "#/components/schemas/BusRoute" },
+          },
+        },
+        required: ["status", "data"],
+      },
+      BusRouteDetailResponse: {
+        type: "object",
+        properties: {
+          status: { type: "string", example: "ok" },
+          data: { $ref: "#/components/schemas/BusRouteDetail" },
         },
         required: ["status", "data"],
       },

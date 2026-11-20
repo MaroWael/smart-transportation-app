@@ -34,3 +34,70 @@ model User {
 
   @@index([role])
 }
+
+model MetroLine {
+  id           String             @id @default(uuid())
+  number       Int                @unique
+  nameEn       String
+  color        String
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+  lineStations MetroLineStation[]
+}
+
+model Station {
+  id           String             @id @default(uuid())
+  nameEn       String             @unique
+  lat          Float
+  lng          Float
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+  lineStations MetroLineStation[]
+}
+
+model MetroLineStation {
+  lineId    String
+  stationId String
+  order     Int
+
+  line    MetroLine @relation(fields: [lineId], references: [id], onDelete: Cascade)
+  station Station   @relation(fields: [stationId], references: [id], onDelete: Cascade)
+
+  @@id([lineId, stationId])
+  @@unique([lineId, order])
+  @@index([lineId])
+  @@index([stationId])
+}
+
+model BusRoute {
+  id         String         @id @default(uuid())
+  code       String         @unique
+  nameEn     String
+  createdAt  DateTime       @default(now())
+  updatedAt  DateTime       @updatedAt
+  routeStops BusRouteStop[]
+}
+
+model BusStop {
+  id         String         @id @default(uuid())
+  nameEn     String
+  lat        Float
+  lng        Float
+  createdAt  DateTime       @default(now())
+  updatedAt  DateTime       @updatedAt
+  routeStops BusRouteStop[]
+}
+
+model BusRouteStop {
+  routeId String
+  stopId  String
+  order   Int
+
+  route BusRoute @relation(fields: [routeId], references: [id], onDelete: Cascade)
+  stop  BusStop  @relation(fields: [stopId], references: [id], onDelete: Cascade)
+
+  @@id([routeId, stopId])
+  @@unique([routeId, order])
+  @@index([routeId])
+  @@index([stopId])
+}
