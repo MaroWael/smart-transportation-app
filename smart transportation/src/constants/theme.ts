@@ -178,6 +178,8 @@ const lightColors = {
   primaryGradient: ['#0B4F8A', '#1466B3'],
   onPrimary: '#FFFFFF',
   error: '#C62828',
+  /** Soft tinted error surface token for form alert banners */
+  errorSoft: '#FDF2F2',
   success: '#15803D',
 } as const;
 
@@ -203,6 +205,7 @@ export interface ThemeTokens {
   primaryGradient: string[];
   onPrimary: string;
   error: string;
+  errorSoft: string;
   success: string;
   spacing: typeof spacing;
   radius: typeof radius;

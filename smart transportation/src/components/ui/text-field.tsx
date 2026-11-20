@@ -1,16 +1,21 @@
+import React, { useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View, type TextInputProps } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
-import { useState } from 'react';
 
 import { useTheme } from '@/hooks/use-theme';
 import { fontSize, spacing } from '@/constants/theme';
+import { useScreenScroll } from '@/components/ui/screen';
+
+export type TextInputRef = React.ComponentRef<typeof TextInput>;
 
 export type TextFieldProps = {
   label: string;
   helper?: string;
   error?: string;
   secureTextEntry?: boolean;
+  leadingIcon?: keyof typeof Ionicons.glyphMap;
+  inputRef?: React.Ref<TextInputRef>;
 } & Omit<TextInputProps, 'value' | 'onChangeText' | 'secureTextEntry'> & {
   value: string;
   onChangeText: (text: string) => void;
@@ -20,7 +25,9 @@ export type TextFieldProps = {
  * 2026 Modern Text Input:
  * - Floating feel with clear label above
  * - Soft surfaceAlt fill, radius 14, 52px tall
- * - 1.5px consistent accent border + focus background lift
+ * - Optional leading Ionicon tinted on focus/error
+ * - 1.5px consistent accent border + focus background lift (no dynamic elevation for lag-free Android IME)
+ * - Auto-notifies parent Screen on focus so the field scrolls cleanly above the keyboard
  * - Clean vertical centering with zero-padding to eliminate Android line-height shifts
  * - Facebook-style clean vector eye toggle
  */
@@ -31,10 +38,16 @@ export function TextField({
   value,
   onChangeText,
   secureTextEntry = false,
+  leadingIcon,
+  inputRef,
+  onFocus,
+  onBlur,
   ...rest
 }: TextFieldProps) {
   const { t } = useTranslation();
   const theme = useTheme();
+  const screenScroll = useScreenScroll();
+  const fieldRef = useRef<React.ComponentRef<typeof View>>(null);
   const [focused, setFocused] = useState(false);
   const [isSecure, setIsSecure] = useState(secureTextEntry);
 
@@ -45,10 +58,16 @@ export function TextField({
       ? theme.primary
       : theme.border;
 
+  const iconColor = hasError
+    ? theme.error
+    : focused
+      ? theme.primary
+      : theme.textSecondary;
+
   const toggleLabel = isSecure ? t('auth.showPassword') : t('auth.hidePassword');
 
   return (
-    <View style={styles.field}>
+    <View ref={fieldRef} collapsable={false} style={styles.field}>
       <Text style={[styles.label, { color: theme.textPrimary }]}>{label}</Text>
       <View
         style={[
@@ -60,20 +79,34 @@ export function TextField({
           },
         ]}
       >
+        {leadingIcon ? (
+          <View pointerEvents="none" style={styles.leadingIcon}>
+            <Ionicons name={leadingIcon} size={20} color={iconColor} />
+          </View>
+        ) : null}
         <TextInput
           {...rest}
+          ref={inputRef}
           accessibilityRole="text"
           autoCorrect={false}
-          onBlur={() => setFocused(false)}
+          onBlur={(e) => {
+            setFocused(false);
+            screenScroll?.onInputBlur(fieldRef.current);
+            onBlur?.(e);
+          }}
           onChangeText={onChangeText}
-          onFocus={() => setFocused(true)}
+          onFocus={(e) => {
+            setFocused(true);
+            screenScroll?.onInputFocus(fieldRef.current);
+            onFocus?.(e);
+          }}
           secureTextEntry={isSecure}
           placeholderTextColor={theme.textSecondary}
           style={[
             styles.input,
             {
               color: theme.textPrimary,
-              paddingStart: spacing.md,
+              paddingStart: leadingIcon ? 44 : spacing.md,
               paddingEnd: secureTextEntry ? 48 : spacing.md,
             },
           ]}
@@ -142,6 +175,14 @@ const styles = StyleSheet.create({
     height: 52,
     justifyContent: 'center',
     borderWidth: 1.5,
+  },
+  leadingIcon: {
+    position: 'absolute',
+    start: 14,
+    top: 0,
+    bottom: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   input: {
     width: '100%',
