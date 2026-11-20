@@ -46,6 +46,7 @@ export type ScreenProps = {
   style?: StyleProp<ViewStyle>;
   contentContainerStyle?: StyleProp<ViewStyle>;
   scrollable?: boolean;
+  refreshControl?: React.ReactElement;
 };
 
 const KEYBOARD_CLEARANCE = 24;
@@ -66,6 +67,7 @@ export function Screen({
   style,
   contentContainerStyle,
   scrollable = true,
+  refreshControl,
 }: ScreenProps) {
   const theme = useTheme();
   const [fadeAnim] = useState(() => new Animated.Value(0));
@@ -278,6 +280,7 @@ export function Screen({
           {scrollable ? (
             <ScrollView
               ref={scrollViewRef}
+              refreshControl={refreshControl}
               onLayout={handleScrollViewLayout}
               onScroll={handleScroll}
               scrollEventThrottle={16}

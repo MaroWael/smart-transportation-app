@@ -27,3 +27,6 @@ export type { SkeletonProps } from './skeleton';
 
 export { BrandHeader } from './brand-header';
 export type { BrandHeaderProps } from './brand-header';
+
+export { ScreenHeader } from './screen-header';
+export type { ScreenHeaderProps } from './screen-header';

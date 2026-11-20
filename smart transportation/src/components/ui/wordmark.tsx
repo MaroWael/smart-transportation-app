@@ -2,7 +2,7 @@ import { Text, StyleSheet } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 import { useTheme } from '@/hooks/use-theme';
-import { fontSize } from '@/constants/theme';
+import { fontSize, fontFamily } from '@/constants/theme';
 
 export type WordmarkProps = {
   style?: Parameters<typeof Text>[0]['style'];
@@ -30,6 +30,7 @@ export function Wordmark({ style }: WordmarkProps) {
 
 const styles = StyleSheet.create({
   wordmark: {
+    fontFamily: fontFamily.bold,
     fontWeight: '700',
     letterSpacing: -0.6,
   },

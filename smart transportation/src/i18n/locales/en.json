@@ -11,7 +11,10 @@
     "cancel": "Cancel",
     "save": "Save",
     "edit": "Edit",
-    "memberSince": "Member since"
+    "memberSince": "Member since",
+    "back": "Back",
+    "retry": "Try again",
+    "pullToRefresh": "Pull to refresh"
   },
   "auth": {
     "login": "Log in",
@@ -79,6 +82,7 @@
   },
   "errors": {
     "offline": "You're offline",
+    "invalidInput": "Invalid input provided. Please check and try again.",
     "invalidCredentials": "Invalid email or password. Please try again.",
     "emailTaken": "This email is already taken. Please use another email.",
     "inactiveAccount": "Your account is inactive. Please contact support.",
@@ -100,5 +104,33 @@
     "fullNameTooLong": "Full name must be at most 100 characters.",
     "passwordsDoNotMatch": "Passwords do not match.",
     "emailTaken": "This email is already taken."
+  },
+  "metro": {
+    "lines": "Metro lines",
+    "linesSubtitle": "Explore Cairo Metro network lines and transfers",
+    "lineDetail": "Metro line details",
+    "stationsCount_one": "{{count}} station",
+    "stationsCount_other": "{{count}} stations",
+    "interchange": "Interchange",
+    "terminal": "Terminal",
+    "searchPlaceholder": "Filter stations by name…",
+    "clearSearch": "Clear search",
+    "noStationsFound": "No stations match \"{{query}}\"",
+    "noLinesFound": "No metro lines available",
+    "transfersTo": "Transfers to",
+    "routeOrder": "Stop {{order}}",
+    "lineA11y": "Line {{number}}, {{name}}, {{count}} stations",
+    "stationA11y": "Station {{order}}, {{name}}"
+  },
+  "bus": {
+    "routes": "Bus routes",
+    "routesSubtitle": "Discover Cairo bus routes and stops",
+    "routeDetail": "Bus route details",
+    "stopsCount_one": "{{count}} stop",
+    "stopsCount_other": "{{count}} stops",
+    "terminal": "Terminal stop",
+    "noRoutesFound": "No bus routes available",
+    "routeA11y": "Route {{code}}, {{name}}, {{count}} stops",
+    "stopA11y": "Stop {{order}}, {{name}}"
   }
 }

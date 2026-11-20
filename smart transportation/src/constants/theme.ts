@@ -24,33 +24,27 @@ import { Platform } from 'react-native';
 export const FORCE_LIGHT_THEME = true;
 
 // ---------------------------------------------------------------------------
-// Fonts (unchanged)
+// Fonts & Typography (Inter 2026 font tokens)
 // ---------------------------------------------------------------------------
 
-export const Fonts = Platform.select({
-  ios: {
-    /** iOS `UIFontDescriptorSystemDesignDefault` */
-    sans: 'system-ui',
-    /** iOS `UIFontDescriptorSystemDesignSerif` */
-    serif: 'ui-serif',
-    /** iOS `UIFontDescriptorSystemDesignRounded` */
-    rounded: 'ui-rounded',
-    /** iOS `UIFontDescriptorSystemDesignMonospaced` */
-    mono: 'ui-monospace',
-  },
-  default: {
-    sans: 'normal',
-    serif: 'serif',
-    rounded: 'normal',
-    mono: 'monospace',
-  },
-  web: {
-    sans: 'var(--font-display)',
-    serif: 'var(--font-serif)',
-    rounded: 'var(--font-rounded)',
-    mono: 'var(--font-mono)',
-  },
-});
+export const fontFamily = {
+  regular: 'Inter_400Regular',
+  semiBold: 'Inter_600SemiBold',
+  bold: 'Inter_700Bold',
+} as const;
+
+export const Fonts = {
+  sans: fontFamily.regular,
+  serif: 'serif',
+  rounded: fontFamily.regular,
+  mono: Platform.select({
+    ios: 'ui-monospace',
+    default: 'monospace',
+  }) as string,
+  regular: fontFamily.regular,
+  semiBold: fontFamily.semiBold,
+  bold: fontFamily.bold,
+};
 
 // ---------------------------------------------------------------------------
 // Spacing (8pt grid)
@@ -207,6 +201,7 @@ export interface ThemeTokens {
   error: string;
   errorSoft: string;
   success: string;
+  fontFamily: typeof fontFamily;
   spacing: typeof spacing;
   radius: typeof radius;
   fontSize: typeof fontSize;
@@ -215,8 +210,8 @@ export interface ThemeTokens {
 }
 
 export const Theme = {
-  light: { ...lightColors, spacing, radius, fontSize, elevation, gradient },
-  dark: { ...darkColors, spacing, radius, fontSize, elevation, gradient },
+  light: { ...lightColors, fontFamily, spacing, radius, fontSize, elevation, gradient },
+  dark: { ...darkColors, fontFamily, spacing, radius, fontSize, elevation, gradient },
 } as const;
 
 // ---------------------------------------------------------------------------

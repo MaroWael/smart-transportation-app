@@ -11,7 +11,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 
 import { useTheme } from '@/hooks/use-theme';
-import { fontSize, spacing } from '@/constants/theme';
+import { fontSize, fontFamily, spacing } from '@/constants/theme';
 
 export type ListRowProps = {
   title: string;
@@ -149,9 +149,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   title: {
+    fontFamily: fontFamily.semiBold,
     fontWeight: '600',
   },
   subtitle: {
+    fontFamily: fontFamily.regular,
     marginTop: 2,
   },
   trailingContainer: {

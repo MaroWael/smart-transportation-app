@@ -1,6 +1,7 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
+import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 
 import { Screen, Card, Badge, Avatar } from '@/components/ui';
@@ -12,6 +13,7 @@ export default function HomeScreen() {
   const { t } = useTranslation();
   const theme = useTheme();
   const { user } = useAuth();
+  const router = useRouter();
 
   const firstName = user?.fullName?.trim()?.split(/\s+/)?.[0] ?? '';
   const greeting = firstName
@@ -81,55 +83,43 @@ export default function HomeScreen() {
           {/* Action 1: Metro lines */}
           <Card
             variant="default"
-            disabled
-            accessibilityLabel={`${t('home.metroLines')} - ${t('home.comingSoon')}`}
+            onPress={() => router.push('/metro' as any)}
+            accessibilityLabel={t('home.metroLines')}
             style={styles.actionCard}
             contentStyle={styles.actionCardContent}
           >
             <View
               style={[
                 styles.actionIconCircle,
-                { backgroundColor: theme.surfaceAlt },
+                { backgroundColor: theme.accentSoft },
               ]}
             >
-              <Ionicons name="subway-outline" size={20} color={theme.textSecondary} />
+              <Ionicons name="subway" size={20} color={theme.primary} />
             </View>
             <Text style={[styles.actionLabel, { color: theme.textPrimary }]}>
               {t('home.metroLines')}
             </Text>
-            <Badge
-              label={t('home.comingSoon')}
-              variant="neutral"
-              size="sm"
-              style={styles.comingSoonBadge}
-            />
           </Card>
 
           {/* Action 2: Buses */}
           <Card
             variant="default"
-            disabled
-            accessibilityLabel={`${t('home.buses')} - ${t('home.comingSoon')}`}
+            onPress={() => router.push('/bus' as any)}
+            accessibilityLabel={t('home.buses')}
             style={styles.actionCard}
             contentStyle={styles.actionCardContent}
           >
             <View
               style={[
                 styles.actionIconCircle,
-                { backgroundColor: theme.surfaceAlt },
+                { backgroundColor: theme.accentSoft },
               ]}
             >
-              <Ionicons name="bus-outline" size={20} color={theme.textSecondary} />
+              <Ionicons name="bus" size={20} color={theme.primary} />
             </View>
             <Text style={[styles.actionLabel, { color: theme.textPrimary }]}>
               {t('home.buses')}
             </Text>
-            <Badge
-              label={t('home.comingSoon')}
-              variant="neutral"
-              size="sm"
-              style={styles.comingSoonBadge}
-            />
           </Card>
 
           {/* Action 3: My tickets */}
@@ -148,7 +138,7 @@ export default function HomeScreen() {
             >
               <Ionicons name="ticket-outline" size={20} color={theme.textSecondary} />
             </View>
-            <Text style={[styles.actionLabel, { color: theme.textPrimary }]}>
+            <Text style={[styles.actionLabel, { color: theme.textSecondary }]}>
               {t('home.myTickets')}
             </Text>
             <Badge

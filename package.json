@@ -1,11 +1,12 @@
 {
   "dependencies": {
     "@neon/config": "^1.14.1",
-    "@neon/env": "^2.1.4",
-    "expo": "^58.0.26"
+    "@neon/env": "^2.1.4"
   },
-  "devDependencies": {
-    "@types/react": "~19.3.0",
-    "typescript": "~6.0.3"
+  "scripts": {
+    "start": "npm --prefix \"smart transportation\" run start",
+    "android": "npm --prefix \"smart transportation\" run android",
+    "ios": "npm --prefix \"smart transportation\" run ios",
+    "web": "npm --prefix \"smart transportation\" run web"
   }
 }

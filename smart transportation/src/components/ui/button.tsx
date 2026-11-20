@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 
 import { useTheme } from '@/hooks/use-theme';
-import { fontSize, spacing } from '@/constants/theme';
+import { fontSize, fontFamily, spacing } from '@/constants/theme';
 
 export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'destructive';
 
@@ -130,6 +130,7 @@ const styles = StyleSheet.create({
     marginEnd: spacing.sm,
   },
   text: {
+    fontFamily: fontFamily.semiBold,
     fontWeight: '600',
     letterSpacing: -0.2,
   },

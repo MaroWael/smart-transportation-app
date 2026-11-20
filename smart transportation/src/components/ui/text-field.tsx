@@ -4,7 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 
 import { useTheme } from '@/hooks/use-theme';
-import { fontSize, spacing } from '@/constants/theme';
+import { fontSize, fontFamily, spacing } from '@/constants/theme';
 import { useScreenScroll } from '@/components/ui/screen';
 
 export type TextInputRef = React.ComponentRef<typeof TextInput>;
@@ -166,6 +166,7 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   label: {
+    fontFamily: fontFamily.semiBold,
     fontSize: fontSize.label,
     fontWeight: '600',
     marginBottom: spacing.xs,
@@ -185,6 +186,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   input: {
+    fontFamily: fontFamily.regular,
     width: '100%',
     height: '100%',
     fontSize: fontSize.body,
@@ -201,10 +203,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   helperText: {
+    fontFamily: fontFamily.regular,
     fontSize: fontSize.caption,
     marginTop: spacing.xs,
   },
   errorText: {
+    fontFamily: fontFamily.regular,
     fontSize: fontSize.caption,
     marginTop: spacing.xs,
   },
