@@ -229,9 +229,9 @@ async function main(): Promise<void> {
 
   // 1. Seed Metro Lines
   const metroLinesConfig = [
-    { number: 1, nameEn: 'Line 1 (Helwan - New El-Marg)', color: '#D32F2F', stations: line1Stations },
-    { number: 2, nameEn: 'Line 2 (Shubra El-Kheima - El-Mounib)', color: '#2E7D32', stations: line2Stations },
-    { number: 3, nameEn: 'Line 3 (Adly Mansour - Rod El-Farag)', color: '#1565C0', stations: line3Stations },
+    { number: 1, nameEn: 'Line 1 (Helwan - New El-Marg)', color: '#1565C0', stations: line1Stations },
+    { number: 2, nameEn: 'Line 2 (Shubra El-Kheima - El-Mounib)', color: '#D32F2F', stations: line2Stations },
+    { number: 3, nameEn: 'Line 3 (Adly Mansour - Rod El-Farag)', color: '#2E7D32', stations: line3Stations },
   ];
 
   for (const lineConfig of metroLinesConfig) {
