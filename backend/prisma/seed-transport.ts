@@ -19,7 +19,7 @@
 //       2. Cairo University Branch (Tawfikia -> Cairo University)
 // ---------------------------------------------------------------
 
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, TransportType } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
@@ -362,7 +362,60 @@ async function main(): Promise<void> {
     }
   }
 
-  // 3. Clean up any orphan stations not linked to any metro line
+  // 3. Seed Fare Rules (Metro & Bus)
+  const fareRulesConfig: Array<{
+    transportType: TransportType;
+    minStops: number;
+    maxStops: number;
+    price: number;
+    currency: string;
+  }> = [
+    // Cairo Metro current 4-tier pricing (10 / 12 / 15 / 20 EGP)
+    { transportType: 'METRO', minStops: 1, maxStops: 9, price: 10, currency: 'EGP' },
+    { transportType: 'METRO', minStops: 10, maxStops: 16, price: 12, currency: 'EGP' },
+    { transportType: 'METRO', minStops: 17, maxStops: 23, price: 15, currency: 'EGP' },
+    { transportType: 'METRO', minStops: 24, maxStops: 100, price: 20, currency: 'EGP' },
+    // Bus base fare rule (actual bus fare is distance-based: base + 1.5 EGP/km)
+    { transportType: 'BUS', minStops: 1, maxStops: 100, price: 8, currency: 'EGP' },
+  ];
+
+  // Remove deprecated old Bus stop-tier rows so only the unified BUS base rule remains active
+  await prisma.fareRule.deleteMany({
+    where: {
+      transportType: 'BUS',
+      NOT: {
+        minStops: 1,
+        maxStops: 100,
+      },
+    },
+  });
+
+  for (const rule of fareRulesConfig) {
+    await prisma.fareRule.upsert({
+      where: {
+        transportType_minStops_maxStops: {
+          transportType: rule.transportType,
+          minStops: rule.minStops,
+          maxStops: rule.maxStops,
+        },
+      },
+      create: {
+        transportType: rule.transportType,
+        minStops: rule.minStops,
+        maxStops: rule.maxStops,
+        price: rule.price,
+        currency: rule.currency,
+        isActive: true,
+      },
+      update: {
+        price: rule.price,
+        currency: rule.currency,
+        isActive: true,
+      },
+    });
+  }
+
+  // 4. Clean up any orphan stations not linked to any metro line
   const orphanResult = await prisma.station.deleteMany({
     where: {
       lineStations: {
@@ -381,6 +434,7 @@ async function main(): Promise<void> {
   const busRoutesCount = await prisma.busRoute.count();
   const busStopsCount = await prisma.busStop.count();
   const busRouteStopsCount = await prisma.busRouteStop.count();
+  const fareRulesCount = await prisma.fareRule.count();
 
   console.log('Seed summary (row counts):');
   console.log(`- MetroLine: ${metroLinesCount}`);
@@ -389,6 +443,7 @@ async function main(): Promise<void> {
   console.log(`- BusRoute: ${busRoutesCount}`);
   console.log(`- BusStop: ${busStopsCount}`);
   console.log(`- BusRouteStop: ${busRouteStopsCount}`);
+  console.log(`- FareRule: ${fareRulesCount}`);
 }
 
 main()

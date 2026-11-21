@@ -37,11 +37,8 @@ export default function HomeScreen() {
 
       {/* Prominent "Where to?" Search Card */}
       <View style={styles.searchSection}>
-        {/* TODO: Wire up route planner / station search sheet when search API is implemented */}
         <Card
-          onPress={() => {
-            // TODO: Route search / journey planner implementation
-          }}
+          onPress={() => router.push('/journey' as any)}
           accessibilityLabel={t('home.whereTo')}
           style={styles.searchCard}
           contentStyle={styles.searchCardContent}

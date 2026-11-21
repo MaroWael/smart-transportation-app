@@ -83,6 +83,68 @@ export interface BusRouteDetail {
   stops: BusStopItem[];
 }
 
+export type TransportType = 'METRO' | 'BUS';
+
+export interface JourneyFareInfo {
+  fareRuleId: string;
+  amount: number;
+  currency: string;
+  pricingModel?: 'STATION_TIERS' | 'DISTANCE_BASED';
+  minStops: number;
+  maxStops: number;
+  baseFare?: number;
+  ratePerKm?: number;
+}
+
+export interface JourneyLineBadge {
+  id: string;
+  number: number;
+  nameEn: string;
+  color: string;
+}
+
+export interface JourneyTransfer {
+  stationId: string;
+  stationName: string;
+  fromLine: JourneyLineBadge;
+  toLine: JourneyLineBadge;
+}
+
+export interface JourneyStopNode {
+  id: string;
+  nameEn: string;
+  lat: number;
+  lng: number;
+  order: number;
+  line?: JourneyLineBadge;
+}
+
+export interface JourneyCalculationResult {
+  transportType: TransportType;
+  origin: { id: string; nameEn: string };
+  destination: { id: string; nameEn: string };
+  busRoute?: { id: string; code: string; nameEn: string };
+  stopCount: number;
+  distanceKm?: number;
+  estimatedMinutes: number;
+  fare: JourneyFareInfo;
+  transfers: JourneyTransfer[];
+  path: JourneyStopNode[];
+}
+
+export type CalculateJourneyPayload =
+  | {
+      transportType: 'METRO';
+      originStationId: string;
+      destinationStationId: string;
+    }
+  | {
+      transportType: 'BUS';
+      busRouteId: string;
+      originStopId: string;
+      destinationStopId: string;
+    };
+
 // ---------------------------------------------------------------------------
 // Error Mapping
 // ---------------------------------------------------------------------------
@@ -193,6 +255,46 @@ export async function fetchBusRouteById(
   signal?: AbortSignal
 ): Promise<BusRouteDetail> {
   return fetchWithAuth<BusRouteDetail>(`/bus/routes/${id}`, token, signal);
+}
+
+export async function calculateJourney(
+  payload: CalculateJourneyPayload,
+  token: string,
+  signal?: AbortSignal
+): Promise<JourneyCalculationResult> {
+  let response: Response;
+  try {
+    response = await fetch(`${API_BASE_URL}/journeys/calculate`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+      signal,
+    });
+  } catch (err) {
+    if (err instanceof Error && err.name === 'AbortError') {
+      throw err;
+    }
+    throw new ApiError(0, 'Network request failed', err);
+  }
+
+  if (!response.ok) {
+    let body: unknown;
+    try {
+      body = await response.json();
+    } catch {
+      body = null;
+    }
+    throw new ApiError(response.status, response.statusText, body);
+  }
+
+  const json = (await response.json()) as {
+    status: string;
+    data: JourneyCalculationResult;
+  };
+  return json.data;
 }
 
 // ---------------------------------------------------------------------------

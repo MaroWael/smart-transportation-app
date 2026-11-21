@@ -22,6 +22,11 @@ enum Role {
   ADMIN
 }
 
+enum TransportType {
+  METRO
+  BUS
+}
+
 model User {
   id        String   @id @default(uuid())
   fullName  String
@@ -102,4 +107,19 @@ model BusRouteStop {
   @@unique([routeId, order])
   @@index([routeId])
   @@index([stopId])
+}
+
+model FareRule {
+  id            String        @id @default(uuid())
+  transportType TransportType
+  minStops      Int
+  maxStops      Int
+  price         Float
+  currency      String        @default("EGP")
+  isActive      Boolean       @default(true)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  @@unique([transportType, minStops, maxStops])
+  @@index([transportType, isActive])
 }

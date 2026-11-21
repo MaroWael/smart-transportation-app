@@ -19,6 +19,7 @@ export const openapi = {
     { name: "metro", description: "Cairo Metro lines and stations" },
     { name: "stations", description: "Stations directory and search" },
     { name: "bus", description: "Cairo Bus routes and stops" },
+    { name: "journeys", description: "Journey planning and automated fare calculation (Metro & Bus)" },
   ],
   paths: {
     "/api/health": {
@@ -513,6 +514,126 @@ export const openapi = {
         },
       },
     },
+    "/api/journeys/calculate": {
+      post: {
+        tags: ["journeys"],
+        summary: "Calculate Metro or Bus journey route and fare",
+        description:
+          "Computes the shortest route, station/stop count, transfers, estimated duration, and matching fare rule for a Metro or Bus journey. Rejects identical or invalid selections.",
+        operationId: "calculateJourney",
+        security: [{ bearerAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                oneOf: [
+                  { $ref: "#/components/schemas/CalculateMetroJourneyRequest" },
+                  { $ref: "#/components/schemas/CalculateBusJourneyRequest" },
+                ],
+              },
+              example: {
+                transportType: "METRO",
+                originStationId: "11111111-1111-1111-1111-111111111111",
+                destinationStationId: "22222222-2222-2222-2222-222222222222",
+              },
+            },
+          },
+        },
+        responses: {
+          "200": {
+            description: "Calculated journey route and ticket fare",
+            content: {
+              "application/json": {
+                schema: {
+                  $ref: "#/components/schemas/JourneyCalculationResponse",
+                },
+              },
+            },
+          },
+          "400": {
+            description: "Invalid input or identical origin and destination",
+            content: {
+              "application/json": {
+                schema: {
+                  $ref: "#/components/schemas/ErrorResponse",
+                },
+              },
+            },
+          },
+          "401": {
+            description: "Unauthorized (missing or invalid token)",
+            content: {
+              "application/json": {
+                schema: {
+                  $ref: "#/components/schemas/ErrorResponse",
+                },
+              },
+            },
+          },
+          "404": {
+            description: "Station, bus route, or fare rule not found",
+            content: {
+              "application/json": {
+                schema: {
+                  $ref: "#/components/schemas/ErrorResponse",
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+    "/api/journeys/fare-rules": {
+      get: {
+        tags: ["journeys"],
+        summary: "List active Metro & Bus fare rules",
+        description: "Returns configured fare tiers, optionally filtered by transportType (METRO or BUS).",
+        operationId: "getFareRules",
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          {
+            name: "transportType",
+            in: "query",
+            required: false,
+            description: "Filter fare rules by transport mode",
+            schema: { type: "string", enum: ["METRO", "BUS"] },
+          },
+        ],
+        responses: {
+          "200": {
+            description: "List of active fare rules",
+            content: {
+              "application/json": {
+                schema: {
+                  $ref: "#/components/schemas/FareRulesResponse",
+                },
+              },
+            },
+          },
+          "400": {
+            description: "Invalid transportType query parameter",
+            content: {
+              "application/json": {
+                schema: {
+                  $ref: "#/components/schemas/ErrorResponse",
+                },
+              },
+            },
+          },
+          "401": {
+            description: "Unauthorized (missing or invalid token)",
+            content: {
+              "application/json": {
+                schema: {
+                  $ref: "#/components/schemas/ErrorResponse",
+                },
+              },
+            },
+          },
+        },
+      },
+    },
   },
   components: {
     securitySchemes: {
@@ -636,6 +757,7 @@ export const openapi = {
           lat: { type: "number", example: 30.0444 },
           lng: { type: "number", example: 31.2357 },
           order: { type: "integer", example: 19 },
+          branch: { type: "string", nullable: true, example: "Cairo University Branch" },
           lines: {
             type: "array",
             items: { $ref: "#/components/schemas/StationLineSummary" },
@@ -648,9 +770,14 @@ export const openapi = {
         type: "object",
         properties: {
           id: { type: "string", format: "uuid" },
-          number: { type: "integer", example: 1 },
-          nameEn: { type: "string", example: "Line 1 (Helwan - New El-Marg)" },
-          color: { type: "string", example: "#D32F2F" },
+          number: { type: "integer", example: 3 },
+          nameEn: { type: "string", example: "Line 3 (Adly Mansour - Rod El-Farag Corridor / Cairo University)" },
+          color: { type: "string", example: "#2E7D32" },
+          branches: {
+            type: "array",
+            items: { type: "string" },
+            example: ["Rod El-Farag Corridor Branch", "Cairo University Branch"],
+          },
           stations: {
             type: "array",
             items: { $ref: "#/components/schemas/MetroLineStationItem" },
@@ -658,7 +785,7 @@ export const openapi = {
           createdAt: { type: "string", format: "date-time" },
           updatedAt: { type: "string", format: "date-time" },
         },
-        required: ["id", "number", "nameEn", "color", "stations", "createdAt", "updatedAt"],
+        required: ["id", "number", "nameEn", "color", "branches", "stations", "createdAt", "updatedAt"],
       },
       MetroLinesResponse: {
         type: "object",
@@ -761,6 +888,96 @@ export const openapi = {
         properties: {
           status: { type: "string", example: "ok" },
           data: { $ref: "#/components/schemas/BusRouteDetail" },
+        },
+        required: ["status", "data"],
+      },
+      CalculateMetroJourneyRequest: {
+        type: "object",
+        properties: {
+          transportType: { type: "string", enum: ["METRO"], example: "METRO" },
+          originStationId: { type: "string", format: "uuid" },
+          destinationStationId: { type: "string", format: "uuid" },
+        },
+        required: ["transportType", "originStationId", "destinationStationId"],
+      },
+      CalculateBusJourneyRequest: {
+        type: "object",
+        properties: {
+          transportType: { type: "string", enum: ["BUS"], example: "BUS" },
+          busRouteId: { type: "string", format: "uuid" },
+          originStopId: { type: "string", format: "uuid" },
+          destinationStopId: { type: "string", format: "uuid" },
+        },
+        required: ["transportType", "busRouteId", "originStopId", "destinationStopId"],
+      },
+      FareRule: {
+        type: "object",
+        properties: {
+          id: { type: "string", format: "uuid" },
+          transportType: { type: "string", enum: ["METRO", "BUS"] },
+          minStops: { type: "integer", example: 1 },
+          maxStops: { type: "integer", example: 9 },
+          price: { type: "number", example: 8 },
+          currency: { type: "string", example: "EGP" },
+          isActive: { type: "boolean", example: true },
+        },
+        required: ["id", "transportType", "minStops", "maxStops", "price", "currency", "isActive"],
+      },
+      FareRulesResponse: {
+        type: "object",
+        properties: {
+          status: { type: "string", example: "ok" },
+          data: {
+            type: "array",
+            items: { $ref: "#/components/schemas/FareRule" },
+          },
+        },
+        required: ["status", "data"],
+      },
+      JourneyCalculationResponse: {
+        type: "object",
+        properties: {
+          status: { type: "string", example: "ok" },
+          data: {
+            type: "object",
+            properties: {
+              transportType: { type: "string", enum: ["METRO", "BUS"] },
+              origin: {
+                type: "object",
+                properties: {
+                  id: { type: "string", format: "uuid" },
+                  nameEn: { type: "string" },
+                },
+              },
+              destination: {
+                type: "object",
+                properties: {
+                  id: { type: "string", format: "uuid" },
+                  nameEn: { type: "string" },
+                },
+              },
+              stopCount: { type: "integer", example: 6 },
+              estimatedMinutes: { type: "integer", example: 13 },
+              fare: {
+                type: "object",
+                properties: {
+                  fareRuleId: { type: "string", format: "uuid" },
+                  amount: { type: "number", example: 8 },
+                  currency: { type: "string", example: "EGP" },
+                  minStops: { type: "integer", example: 1 },
+                  maxStops: { type: "integer", example: 9 },
+                },
+              },
+              transfers: {
+                type: "array",
+                items: { type: "object" },
+              },
+              path: {
+                type: "array",
+                items: { type: "object" },
+              },
+            },
+          },
         },
         required: ["status", "data"],
       },
