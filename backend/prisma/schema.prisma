@@ -59,6 +59,7 @@ model MetroLineStation {
   lineId    String
   stationId String
   order     Int
+  branch    String?
 
   line    MetroLine @relation(fields: [lineId], references: [id], onDelete: Cascade)
   station Station   @relation(fields: [stationId], references: [id], onDelete: Cascade)
@@ -67,6 +68,7 @@ model MetroLineStation {
   @@unique([lineId, order])
   @@index([lineId])
   @@index([stationId])
+  @@index([lineId, branch])
 }
 
 model BusRoute {

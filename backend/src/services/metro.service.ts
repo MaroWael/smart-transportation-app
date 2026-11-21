@@ -30,6 +30,7 @@ export interface MetroLineStationItem {
   lat: number;
   lng: number;
   order: number;
+  branch: string | null;
   lines: StationLineSummary[];
   isInterchange: boolean;
 }
@@ -41,6 +42,7 @@ export interface MetroLineDetail {
   color: string;
   createdAt: Date;
   updatedAt: Date;
+  branches: string[];
   stations: MetroLineStationItem[];
 }
 
@@ -111,10 +113,19 @@ export const getMetroLineById = async (id: string): Promise<MetroLineDetail> => 
       lat: ls.station.lat,
       lng: ls.station.lng,
       order: ls.order,
+      branch: ls.branch ?? null,
       lines: stationLines,
       isInterchange: stationLines.length > 1,
     };
   });
+
+  const branches = Array.from(
+    new Set(
+      stations
+        .map((s) => s.branch)
+        .filter((b): b is string => Boolean(b))
+    )
+  );
 
   return {
     id: line.id,
@@ -123,6 +134,7 @@ export const getMetroLineById = async (id: string): Promise<MetroLineDetail> => 
     color: line.color,
     createdAt: line.createdAt,
     updatedAt: line.updatedAt,
+    branches,
     stations,
   };
 };

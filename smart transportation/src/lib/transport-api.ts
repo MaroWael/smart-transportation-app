@@ -38,6 +38,7 @@ export interface MetroLineStationItem {
   lat: number;
   lng: number;
   order: number;
+  branch?: string | null;
   isInterchange: boolean;
   lines: StationLineSummary[];
 }
@@ -47,6 +48,7 @@ export interface MetroLineDetail {
   number: number;
   nameEn: string;
   color: string;
+  branches?: string[];
   stations: MetroLineStationItem[];
 }
 

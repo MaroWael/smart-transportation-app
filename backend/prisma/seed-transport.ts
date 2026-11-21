@@ -5,14 +5,18 @@
 // not official transport authority data.
 //
 // Idempotent: uses upserts to ensure repeated runs do not duplicate records.
-// Interchanges:
+// Interchanges (verified against official Cairo Metro map):
 //   - Sadat (Line 1 + Line 2)
 //   - Al-Shohadaa (Line 1 + Line 2)
 //   - Attaba (Line 2 + Line 3)
 //   - Nasser (Line 1 + Line 3)
-//   - Rod El-Farag (Line 2 + Line 3)
-// Note: Kit Kat is retained strictly on Line 3 (official Cairo Metro map
-//       confirms Line 2 does not serve Kit Kat).
+//   - Cairo University (Line 2 + Line 3 — Cairo University Branch)
+// Notes:
+//   - "Rod El-Farag" (Line 2) and "Rod El-Farag Corridor" (Line 3) are two
+//     completely separate stations (NOT an interchange).
+//   - Kit Kat is Line 3's western branching hub, splitting into:
+//       1. Rod El-Farag Corridor Branch (Sudan -> Rod El-Farag Corridor)
+//       2. Cairo University Branch (Tawfikia -> Cairo University)
 // ---------------------------------------------------------------
 
 import { PrismaClient } from '@prisma/client';
@@ -23,6 +27,7 @@ interface StationData {
   nameEn: string;
   lat: number;
   lng: number;
+  branch?: string | null;
 }
 
 interface BusStopData {
@@ -81,7 +86,7 @@ const line2Stations: StationData[] = [
   { nameEn: 'El-Mazallat', lat: 30.1065, lng: 31.2476 },
   { nameEn: 'El-Khalafawy', lat: 30.1002, lng: 31.2458 },
   { nameEn: 'St. Teresa', lat: 30.0898, lng: 31.2451 },
-  { nameEn: 'Rod El-Farag', lat: 30.0809, lng: 31.2456 }, // Interchange L2 + L3 (order 6)
+  { nameEn: 'Rod El-Farag', lat: 30.0809, lng: 31.2456 }, // Line 2 only (distinct from L3 Rod El-Farag Corridor)
   { nameEn: 'Massara', lat: 30.0711, lng: 31.2459 },
   { nameEn: 'Al-Shohadaa', lat: 30.0614, lng: 31.2464 }, // Interchange L1 + L2
   { nameEn: 'Attaba', lat: 30.0525, lng: 31.2471 }, // Interchange L2 + L3
@@ -98,8 +103,9 @@ const line2Stations: StationData[] = [
   { nameEn: 'El-Mounib', lat: 29.9813, lng: 31.2053 },
 ];
 
-// Line 3: Adly Mansour -> Rod El-Farag (29 stations main section)
+// Line 3: Adly Mansour -> Kit Kat -> Rod El-Farag Branch & Cairo University Branch (34 stations)
 const line3Stations: StationData[] = [
+  // Main trunk (Adly Mansour -> Kit Kat, orders 1..23)
   { nameEn: 'Adly Mansour', lat: 30.1472, lng: 31.4206 },
   { nameEn: 'El-Haykestep', lat: 30.1432, lng: 31.3995 },
   { nameEn: 'Omar Ibn El-Khattab', lat: 30.1387, lng: 31.3855 },
@@ -122,13 +128,22 @@ const line3Stations: StationData[] = [
   { nameEn: 'Nasser', lat: 30.0531, lng: 31.2396 }, // Interchange L1 + L3
   { nameEn: 'Maspero', lat: 30.0558, lng: 31.2325 },
   { nameEn: 'Safaa Hegazy', lat: 30.0615, lng: 31.2212 },
-  { nameEn: 'Kit Kat', lat: 30.0635, lng: 31.2132 }, // Line 3 hub (not on Line 2)
-  { nameEn: 'Sudan', lat: 30.0691, lng: 31.2062 },
-  { nameEn: 'Imbaba', lat: 30.0760, lng: 31.2052 },
-  { nameEn: 'El-Bohi', lat: 30.0825, lng: 31.2078 },
-  { nameEn: 'El-Qawmia', lat: 30.0910, lng: 31.2091 },
-  { nameEn: 'Ring Road', lat: 30.0988, lng: 31.2098 },
-  { nameEn: 'Rod El-Farag', lat: 30.0809, lng: 31.2456 }, // Interchange L2 + L3 (order 29)
+  { nameEn: 'Kit Kat', lat: 30.0635, lng: 31.2132 }, // Line 3 branching hub
+
+  // North-West Branch from Kit Kat -> Rod El-Farag Corridor (orders 24..29)
+  { nameEn: 'Sudan', lat: 30.0691, lng: 31.2062, branch: 'Rod El-Farag Corridor Branch' },
+  { nameEn: 'Imbaba', lat: 30.0760, lng: 31.2052, branch: 'Rod El-Farag Corridor Branch' },
+  { nameEn: 'El-Bohi', lat: 30.0825, lng: 31.2078, branch: 'Rod El-Farag Corridor Branch' },
+  { nameEn: 'El-Qawmia', lat: 30.0910, lng: 31.2091, branch: 'Rod El-Farag Corridor Branch' },
+  { nameEn: 'Ring Road', lat: 30.0988, lng: 31.2098, branch: 'Rod El-Farag Corridor Branch' },
+  { nameEn: 'Rod El-Farag Corridor', lat: 30.1015, lng: 31.1846, branch: 'Rod El-Farag Corridor Branch' }, // Line 3 terminus only (distinct from L2 Rod El-Farag)
+
+  // South Branch from Kit Kat -> Cairo University (orders 30..34)
+  { nameEn: 'Tawfikia', lat: 30.0652, lng: 31.2025, branch: 'Cairo University Branch' },
+  { nameEn: 'Wadi El-Nile', lat: 30.0583, lng: 31.2011, branch: 'Cairo University Branch' },
+  { nameEn: 'Gamaat El-Dowal', lat: 30.0508, lng: 31.1997, branch: 'Cairo University Branch' },
+  { nameEn: 'Boulak El-Dakrour', lat: 30.0361, lng: 31.1965, branch: 'Cairo University Branch' },
+  { nameEn: 'Cairo University', lat: 30.0263, lng: 31.2008, branch: 'Cairo University Branch' }, // Interchange L2 + L3
 ];
 
 // ------------------------------------------------------------------
@@ -214,16 +229,15 @@ const busRoutes: BusRouteData[] = [
 ];
 
 async function main(): Promise<void> {
-  // 0. Remove deprecated duplicate "Rod El-Farag Corridor" station if present
-  const deprecatedStation = await prisma.station.findUnique({
-    where: { nameEn: 'Rod El-Farag Corridor' },
-  });
-  if (deprecatedStation) {
+  // 0. Remove erroneous link between Line 3 and Line 2's "Rod El-Farag" if present
+  const line3Existing = await prisma.metroLine.findUnique({ where: { number: 3 } });
+  const line2RodElFarag = await prisma.station.findUnique({ where: { nameEn: 'Rod El-Farag' } });
+  if (line3Existing && line2RodElFarag) {
     await prisma.metroLineStation.deleteMany({
-      where: { stationId: deprecatedStation.id },
-    });
-    await prisma.station.delete({
-      where: { id: deprecatedStation.id },
+      where: {
+        lineId: line3Existing.id,
+        stationId: line2RodElFarag.id,
+      },
     });
   }
 
@@ -231,7 +245,7 @@ async function main(): Promise<void> {
   const metroLinesConfig = [
     { number: 1, nameEn: 'Line 1 (Helwan - New El-Marg)', color: '#1565C0', stations: line1Stations },
     { number: 2, nameEn: 'Line 2 (Shubra El-Kheima - El-Mounib)', color: '#D32F2F', stations: line2Stations },
-    { number: 3, nameEn: 'Line 3 (Adly Mansour - Rod El-Farag)', color: '#2E7D32', stations: line3Stations },
+    { number: 3, nameEn: 'Line 3 (Adly Mansour - Rod El-Farag Corridor / Cairo University)', color: '#2E7D32', stations: line3Stations },
   ];
 
   for (const lineConfig of metroLinesConfig) {
@@ -278,9 +292,11 @@ async function main(): Promise<void> {
           lineId: line.id,
           stationId: station.id,
           order,
+          branch: s.branch ?? null,
         },
         update: {
           order,
+          branch: s.branch ?? null,
         },
       });
     }
