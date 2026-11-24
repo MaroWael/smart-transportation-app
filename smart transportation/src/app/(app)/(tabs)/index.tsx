@@ -1,10 +1,18 @@
-import React, { useCallback, useState } from 'react';
-import { Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import {
+  Animated,
+  Pressable,
+  RefreshControl,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 
 import { Screen, Card, Badge, Avatar } from '@/components/ui';
+import { TransitLoadingScreen } from '@/components/transit-loading-screen';
 import { useTheme } from '@/hooks/use-theme';
 import { fontFamily, fontSize, spacing } from '@/constants/theme';
 import { useAuth } from '@/context/auth-context';
@@ -28,10 +36,24 @@ export default function HomeScreen() {
 
   const [recentBookings, setRecentBookings] = useState<BookingRecord[]>([]);
   const [recentScans, setRecentScans] = useState<TicketValidationLogItem[]>([]);
+  const [loadedUserId, setLoadedUserId] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
 
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const isInitialLoading = Boolean(user?.id && loadedUserId !== user.id);
+
+  // Reset cached state whenever a different user logs in
+  useEffect(() => {
+    if (user?.id && loadedUserId && loadedUserId !== user.id) {
+      setRecentBookings([]);
+      setRecentScans([]);
+      fadeAnim.setValue(0);
+    }
+  }, [user?.id, loadedUserId, fadeAnim]);
+
   const loadHomeData = useCallback(async () => {
-    if (!token) return;
+    if (!token || !user?.id) return;
+    const targetUserId = user.id;
     try {
       if (isStaffOnly) {
         const scans = await fetchTicketValidations(token);
@@ -43,11 +65,23 @@ export default function HomeScreen() {
     } catch (err) {
       if (err instanceof ApiError && err.status === 401) {
         await logout();
+        return;
       }
     } finally {
+      setLoadedUserId(targetUserId);
       setRefreshing(false);
     }
-  }, [token, isStaffOnly, logout]);
+  }, [token, user?.id, isStaffOnly, logout]);
+
+  useEffect(() => {
+    if (!isInitialLoading) {
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 280,
+        useNativeDriver: true,
+      }).start();
+    }
+  }, [isInitialLoading, fadeAnim]);
 
   useFocusEffect(
     useCallback(() => {
@@ -60,6 +94,15 @@ export default function HomeScreen() {
     await loadHomeData();
   };
 
+  if (isInitialLoading) {
+    return (
+      <TransitLoadingScreen
+        isStaff={isStaffOnly}
+        userName={user?.fullName ?? undefined}
+      />
+    );
+  }
+
   const firstName = user?.fullName?.trim()?.split(/\s+/)?.[0] ?? '';
   const greeting = firstName
     ? t('home.greeting', { name: firstName })
@@ -71,6 +114,7 @@ export default function HomeScreen() {
     const rejectedCount = recentScans.length - validCount;
 
     return (
+      <Animated.View style={{ flex: 1, opacity: fadeAnim }}>
       <Screen
         scrollable
         refreshControl={
@@ -321,10 +365,12 @@ export default function HomeScreen() {
           )}
         </View>
       </Screen>
+      </Animated.View>
     );
   }
 
   return (
+    <Animated.View style={{ flex: 1, opacity: fadeAnim }}>
     <Screen
       scrollable
       refreshControl={
@@ -602,6 +648,7 @@ export default function HomeScreen() {
         )}
       </View>
     </Screen>
+    </Animated.View>
   );
 }
 
