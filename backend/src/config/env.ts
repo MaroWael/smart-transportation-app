@@ -28,6 +28,8 @@ const envSchema = z.object({
   // Optional seed credentials (used only by prisma/seed.ts).
   ADMIN_EMAIL: z.string().email().optional(),
   ADMIN_PASSWORD: z.string().min(8).optional(),
+  // Optional Stripe Test Mode secret key (sk_test_...). Falls back to built-in test simulator when omitted.
+  STRIPE_SECRET_KEY: z.string().optional(),
 });
 
 const _env = envSchema.safeParse(process.env);

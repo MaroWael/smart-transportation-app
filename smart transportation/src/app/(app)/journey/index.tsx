@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
+  ActivityIndicator,
   FlatList,
   Modal,
   Pressable,
@@ -10,6 +11,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
+import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 
 import {
@@ -19,6 +21,7 @@ import {
   Screen,
   ScreenHeader,
 } from '@/components/ui';
+import { StripePaymentSheet } from '@/components/stripe-payment-sheet';
 import { useTheme } from '@/hooks/use-theme';
 import { fontFamily, fontSize, spacing, Theme } from '@/constants/theme';
 import { useAuth } from '@/context/auth-context';
@@ -28,12 +31,16 @@ import {
   BusRouteSummary,
   BusStopItem,
   calculateJourney,
+  confirmBookingPayment,
+  createBooking,
   fetchBusRouteById,
   fetchBusRoutes,
   fetchStations,
   getStatusErrorKey,
   JourneyCalculationResult,
   StationItem,
+  StripeTestCardToken,
+  TestPaymentOutcome,
   TransportType,
 } from '@/lib/transport-api';
 
@@ -49,6 +56,7 @@ export default function JourneyPlannerScreen() {
   const { t } = useTranslation();
   const theme = useTheme();
   const { token, logout } = useAuth();
+  const router = useRouter();
 
   const [mode, setMode] = useState<TransportType>('METRO');
 
@@ -68,8 +76,14 @@ export default function JourneyPlannerScreen() {
   const [pickerKind, setPickerKind] = useState<PickerKind>(null);
   const [pickerSearch, setPickerSearch] = useState('');
 
-  // Calculation state
+  // Calculation & direct Stripe payment sheet state
   const [calculating, setCalculating] = useState(false);
+  const [sheetVisible, setSheetVisible] = useState(false);
+  const [pendingBookingId, setPendingBookingId] = useState<string | null>(null);
+  const [paying, setPaying] = useState(false);
+  const [sheetError, setSheetError] = useState<string | null>(null);
+  const [showStops, setShowStops] = useState(false);
+  const [infoNotice, setInfoNotice] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [result, setResult] = useState<JourneyCalculationResult | null>(null);
 
@@ -136,32 +150,98 @@ export default function JourneyPlannerScreen() {
     }
   };
 
-  const handleCalculate = async () => {
+  // Auto-calculate fare as soon as both origin & destination are chosen (or swapped)
+  useEffect(() => {
     if (!token) return;
-    setErrorMessage(null);
 
     if (mode === 'METRO') {
       if (!originStation || !destStation) {
-        setErrorMessage(t('journey.missingSelectionError'));
+        setErrorMessage(null);
+        setResult(null);
         return;
       }
       if (originStation.id === destStation.id) {
+        setResult(null);
         setErrorMessage(t('journey.sameSelectionError'));
         return;
       }
     } else {
       if (!selectedBusRoute || !originStop || !destStop) {
-        setErrorMessage(t('journey.missingSelectionError'));
+        setErrorMessage(null);
+        setResult(null);
         return;
       }
       if (originStop.id === destStop.id) {
+        setResult(null);
         setErrorMessage(t('journey.sameSelectionError'));
         return;
       }
     }
 
+    const controller = new AbortController();
+    setErrorMessage(null);
     setCalculating(true);
+
+    const payload =
+      mode === 'METRO'
+        ? {
+            transportType: 'METRO' as const,
+            originStationId: originStation!.id,
+            destinationStationId: destStation!.id,
+          }
+        : {
+            transportType: 'BUS' as const,
+            busRouteId: selectedBusRoute!.id,
+            originStopId: originStop!.id,
+            destinationStopId: destStop!.id,
+          };
+
+    calculateJourney(payload, token, controller.signal)
+      .then((calculated) => {
+        if (!controller.signal.aborted) {
+          setResult(calculated);
+          setErrorMessage(null);
+        }
+      })
+      .catch((err) => {
+        if (controller.signal.aborted) return;
+        if (err instanceof ApiError && err.status === 401) {
+          void logout();
+          return;
+        }
+        const key = getStatusErrorKey(err);
+        setErrorMessage(t(key as any) as string);
+        setResult(null);
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) {
+          setCalculating(false);
+        }
+      });
+
+    return () => controller.abort();
+  }, [
+    token,
+    mode,
+    originStation,
+    destStation,
+    selectedBusRoute,
+    originStop,
+    destStop,
+    logout,
+    t,
+  ]);
+
+  const [openingCheckout, setOpeningCheckout] = useState(false);
+
+  const handleOpenCheckoutSheet = async () => {
+    if (!token || !result) return;
+    setSheetError(null);
+    setInfoNotice(null);
+    setErrorMessage(null);
+    setOpeningCheckout(true);
     try {
+      // Create a real PENDING booking + Stripe PaymentIntent immediately so Cancel & Retry are 100% real
       const payload =
         mode === 'METRO'
           ? {
@@ -175,9 +255,9 @@ export default function JourneyPlannerScreen() {
               originStopId: originStop!.id,
               destinationStopId: destStop!.id,
             };
-
-      const calculated = await calculateJourney(payload, token);
-      setResult(calculated);
+      const created = await createBooking(payload, token);
+      setPendingBookingId(created.booking.id);
+      setSheetVisible(true);
     } catch (err) {
       if (err instanceof ApiError && err.status === 401) {
         await logout();
@@ -185,9 +265,65 @@ export default function JourneyPlannerScreen() {
       }
       const key = getStatusErrorKey(err);
       setErrorMessage(t(key as any) as string);
-      setResult(null);
     } finally {
-      setCalculating(false);
+      setOpeningCheckout(false);
+    }
+  };
+
+  const handleCancelPayment = async () => {
+    if (token && pendingBookingId) {
+      try {
+        await confirmBookingPayment(pendingBookingId, 'CANCELLED', token);
+      } catch {
+        // Ignore network errors on cancel cleanup
+      }
+      setPendingBookingId(null);
+    }
+    setSheetVisible(false);
+    setInfoNotice('Payment cancelled. No charge was made.');
+  };
+
+  const handlePayNow = async (
+    outcome: TestPaymentOutcome,
+    paymentMethodToken: StripeTestCardToken
+  ): Promise<{ ok: boolean; error?: string }> => {
+    if (!token || !pendingBookingId) {
+      return { ok: false, error: 'Booking session expired. Please try again.' };
+    }
+    setPaying(true);
+    setSheetError(null);
+    try {
+      const confirmed = await confirmBookingPayment(
+        pendingBookingId,
+        outcome,
+        token,
+        paymentMethodToken
+      );
+      if (confirmed.status === 'CONFIRMED') {
+        setSheetVisible(false);
+        setPendingBookingId(null);
+        router.replace(`/tickets/${confirmed.id}` as any);
+        return { ok: true };
+      }
+
+      return {
+        ok: false,
+        error:
+          confirmed.failureReason ||
+          'Your card was declined by Stripe. Please try another card.',
+      };
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 401) {
+        setSheetVisible(false);
+        await logout();
+        return { ok: false };
+      }
+      const key = getStatusErrorKey(err);
+      const msg = t(key as any) as string;
+      setSheetError(msg);
+      return { ok: false, error: msg };
+    } finally {
+      setPaying(false);
     }
   };
 
@@ -451,13 +587,14 @@ export default function JourneyPlannerScreen() {
           </View>
         ) : null}
 
-        <Button
-          onPress={handleCalculate}
-          loading={calculating}
-          style={styles.calcButton}
-        >
-          {calculating ? t('journey.calculating') : t('journey.calculateFare')}
-        </Button>
+        {calculating ? (
+          <View style={styles.autoCalcRow}>
+            <ActivityIndicator size="small" color={theme.primary} />
+            <Text style={[styles.autoCalcText, { color: theme.textSecondary }]}>
+              {t('journey.calculating')}
+            </Text>
+          </View>
+        ) : null}
       </Card>
 
       {/* Calculated Fare & Route Result */}
@@ -600,17 +737,53 @@ export default function JourneyPlannerScreen() {
               </View>
             )}
 
-            <Button variant="secondary" disabled style={styles.bookBtn}>
-              {t('journey.bookComingSoon')}
+            {infoNotice ? (
+              <View
+                style={[
+                  styles.infoBanner,
+                  { backgroundColor: theme.surfaceAlt, borderColor: theme.border },
+                ]}
+              >
+                <Ionicons
+                  name="information-circle-outline"
+                  size={16}
+                  color={theme.textSecondary}
+                />
+                <Text
+                  style={[styles.infoBannerText, { color: theme.textSecondary }]}
+                >
+                  {infoNotice}
+                </Text>
+              </View>
+            ) : null}
+
+            <Button
+              onPress={() => void handleOpenCheckoutSheet()}
+              loading={openingCheckout}
+              style={styles.bookBtn}
+            >
+              {`Pay ${result.fare.amount} ${result.fare.currency}`}
             </Button>
           </Card>
 
-          {/* Route Stops Timeline */}
+          {/* Collapsible Route Stops Timeline (keeps Pay CTA clean & above the fold) */}
           <Card style={styles.pathCard} contentStyle={styles.pathCardContent}>
-            <Text style={[styles.subHeading, { color: theme.textSecondary }]}>
-              {t('journey.routePathTitle')}
-            </Text>
-            {result.path.map((stop, idx) => {
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => setShowStops((prev) => !prev)}
+              style={styles.pathToggleRow}
+            >
+              <Text style={[styles.subHeading, { color: theme.textSecondary, marginBottom: 0 }]}>
+                {`${t('journey.routePathTitle')} (${result.path.length})`}
+              </Text>
+              <Ionicons
+                name={showStops ? 'chevron-up' : 'chevron-down'}
+                size={18}
+                color={theme.textSecondary}
+              />
+            </Pressable>
+            {showStops
+              ? result.path.map((stop, idx) => {
               const isFirst = idx === 0;
               const isLast = idx === result.path.length - 1;
               const lineColor = stop.line?.color ?? theme.primary;
@@ -665,10 +838,28 @@ export default function JourneyPlannerScreen() {
                   </View>
                 </View>
               );
-            })}
+            })
+              : null}
           </Card>
         </View>
       ) : null}
+
+      {/* Direct In-App Stripe Payment Sheet (auto-redirects to QR Ticket on success) */}
+      <StripePaymentSheet
+        visible={sheetVisible}
+        amount={result?.fare.amount ?? 0}
+        currency={result?.fare.currency ?? 'EGP'}
+        subtitle={
+          result
+            ? `${result.origin.nameEn} → ${result.destination.nameEn}`
+            : undefined
+        }
+        processing={paying}
+        externalError={sheetError}
+        onClose={() => setSheetVisible(false)}
+        onCancel={handleCancelPayment}
+        onSubmit={handlePayNow}
+      />
 
       {/* Searchable Picker Modal */}
       <Modal
@@ -871,8 +1062,16 @@ const styles = StyleSheet.create({
     fontFamily: fontFamily.semiBold,
     fontSize: fontSize.caption,
   },
-  calcButton: {
-    marginTop: spacing.xs,
+  autoCalcRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 6,
+  },
+  autoCalcText: {
+    fontFamily: fontFamily.semiBold,
+    fontSize: fontSize.caption,
   },
   resultSection: {
     gap: spacing.md,
@@ -963,9 +1162,29 @@ const styles = StyleSheet.create({
   bookBtn: {
     marginTop: spacing.xs,
   },
+  infoBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 8,
+    borderRadius: 8,
+    borderWidth: 1,
+  },
+  infoBannerText: {
+    flex: 1,
+    fontFamily: fontFamily.regular,
+    fontSize: fontSize.caption,
+  },
   pathCard: {},
   pathCardContent: {
     padding: spacing.md,
+  },
+  pathToggleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 4,
   },
   pathRow: {
     flexDirection: 'row',

@@ -27,6 +27,7 @@ import metroRouter from './routes/metro.route';
 import stationRouter from './routes/station.route';
 import busRouter from './routes/bus.route';
 import journeyRouter from './routes/journey.route';
+import bookingRouter from './routes/booking.route';
 import { errorHandler, notFoundHandler } from './middlewares/error.middleware';
 
 export const app: Application = express();
@@ -69,6 +70,7 @@ app.use('/api/metro', metroRouter);
 app.use('/api/stations', stationRouter);
 app.use('/api/bus', busRouter);
 app.use('/api/journeys', journeyRouter);
+app.use('/api/bookings', bookingRouter);
 app.use('/api', docsRouter);
 
 // 5. 404 handler (after routes)

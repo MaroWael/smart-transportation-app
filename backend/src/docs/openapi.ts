@@ -20,6 +20,7 @@ export const openapi = {
     { name: "stations", description: "Stations directory and search" },
     { name: "bus", description: "Cairo Bus routes and stops" },
     { name: "journeys", description: "Journey planning and automated fare calculation (Metro & Bus)" },
+    { name: "bookings", description: "Ticket bookings, Stripe Test Mode checkout, QR tickets & booking history" },
   ],
   paths: {
     "/api/health": {
@@ -631,6 +632,111 @@ export const openapi = {
               },
             },
           },
+        },
+      },
+    },
+    "/api/bookings": {
+      post: {
+        tags: ["bookings"],
+        summary: "Create a ticket booking (Metro or Bus)",
+        description:
+          "Validates the selected journey, calculates the authoritative fare, stores a PENDING booking, and creates a Stripe Test Mode PaymentIntent.",
+        operationId: "createBooking",
+        security: [{ bearerAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                oneOf: [
+                  { $ref: "#/components/schemas/CalculateMetroJourneyRequest" },
+                  { $ref: "#/components/schemas/CalculateBusJourneyRequest" },
+                ],
+              },
+            },
+          },
+        },
+        responses: {
+          "201": { description: "Booking created with Stripe Test Mode PaymentIntent" },
+          "400": { description: "Invalid booking request" },
+          "401": { description: "Unauthorized" },
+        },
+      },
+    },
+    "/api/bookings/me": {
+      get: {
+        tags: ["bookings"],
+        summary: "List current passenger's bookings and tickets",
+        description: "Returns all current and previous bookings belonging strictly to the authenticated passenger.",
+        operationId: "listMyBookings",
+        security: [{ bearerAuth: [] }],
+        responses: {
+          "200": { description: "List of passenger bookings" },
+          "401": { description: "Unauthorized" },
+        },
+      },
+    },
+    "/api/bookings/{id}": {
+      get: {
+        tags: ["bookings"],
+        summary: "Get booking and QR ticket details",
+        description: "Returns a single booking with payment status and signed QR ticket image (owner only).",
+        operationId: "getBookingById",
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          {
+            name: "id",
+            in: "path",
+            required: true,
+            schema: { type: "string", format: "uuid" },
+          },
+        ],
+        responses: {
+          "200": { description: "Booking detail with QR ticket if confirmed" },
+          "403": { description: "Forbidden (belongs to another passenger)" },
+          "404": { description: "Booking not found" },
+        },
+      },
+    },
+    "/api/bookings/{id}/confirm-payment": {
+      post: {
+        tags: ["bookings"],
+        summary: "Confirm Stripe Test Mode payment outcome",
+        description:
+          "Processes a Stripe Test Mode outcome (SUCCEEDED, FAILED, or CANCELLED). Issues a unique signed QR ticket only when outcome is SUCCEEDED.",
+        operationId: "confirmBookingPayment",
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          {
+            name: "id",
+            in: "path",
+            required: true,
+            schema: { type: "string", format: "uuid" },
+          },
+        ],
+        requestBody: {
+          required: false,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                properties: {
+                  outcome: {
+                    type: "string",
+                    enum: ["SUCCEEDED", "FAILED", "CANCELLED"],
+                    default: "SUCCEEDED",
+                  },
+                },
+              },
+              example: { outcome: "SUCCEEDED" },
+            },
+          },
+        },
+        responses: {
+          "200": { description: "Updated booking with QR ticket on SUCCEEDED" },
+          "400": { description: "Invalid outcome or booking already finalized" },
+          "403": { description: "Forbidden" },
+          "404": { description: "Booking not found" },
         },
       },
     },

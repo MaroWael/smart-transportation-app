@@ -145,6 +145,67 @@ export type CalculateJourneyPayload =
       destinationStopId: string;
     };
 
+export type BookingStatus = 'PENDING' | 'CONFIRMED' | 'CANCELLED' | 'FAILED';
+export type PaymentStatus = 'PENDING' | 'SUCCEEDED' | 'FAILED' | 'CANCELLED';
+export type TicketStatus = 'ACTIVE' | 'USED' | 'EXPIRED' | 'REVOKED';
+export type TestPaymentOutcome = 'SUCCEEDED' | 'FAILED' | 'CANCELLED';
+
+export type StripeTestCardToken =
+  | 'pm_card_visa'
+  | 'pm_card_mastercard'
+  | 'pm_card_chargeDeclined'
+  | 'pm_card_chargeDeclinedInsufficientFunds'
+  | 'pm_card_chargeDeclinedExpiredCard'
+  | 'pm_card_cvcCheckFail';
+
+export interface BookingPaymentItem {
+  id: string;
+  stripePaymentIntentId: string;
+  amount: number;
+  currency: string;
+  status: PaymentStatus;
+  paidAt: string | null;
+}
+
+export interface BookingTicketItem {
+  id: string;
+  ticketCode: string;
+  qrPayload: string;
+  qrImageDataUrl?: string;
+  status: TicketStatus;
+  issuedAt: string;
+  expiresAt: string;
+  usedAt: string | null;
+}
+
+export interface BookingRecord {
+  id: string;
+  userId: string;
+  transportType: TransportType;
+  originName: string;
+  destinationName: string;
+  busRoute: { id: string; code: string; nameEn: string } | null;
+  stopCount: number;
+  distanceKm: number | null;
+  totalAmount: number;
+  currency: string;
+  status: BookingStatus;
+  createdAt: string;
+  updatedAt: string;
+  payment: BookingPaymentItem | null;
+  ticket: BookingTicketItem | null;
+  failureReason?: string | null;
+}
+
+export interface CreateBookingResponse {
+  booking: BookingRecord;
+  stripe: {
+    paymentIntentId: string;
+    clientSecret: string;
+    mode: 'stripe_test_api' | 'stripe_test_simulator';
+  };
+}
+
 // ---------------------------------------------------------------------------
 // Error Mapping
 // ---------------------------------------------------------------------------
@@ -295,6 +356,109 @@ export async function calculateJourney(
     data: JourneyCalculationResult;
   };
   return json.data;
+}
+
+async function postWithAuth<T>(
+  path: string,
+  body: unknown,
+  token: string,
+  signal?: AbortSignal
+): Promise<T> {
+  let response: Response;
+  try {
+    response = await fetch(`${API_BASE_URL}${path}`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(body),
+      signal,
+    });
+  } catch (err) {
+    if (err instanceof Error && err.name === 'AbortError') {
+      throw err;
+    }
+    throw new ApiError(0, 'Network request failed', err);
+  }
+
+  if (!response.ok) {
+    let parsed: unknown;
+    try {
+      parsed = await response.json();
+    } catch {
+      parsed = null;
+    }
+    throw new ApiError(response.status, response.statusText, parsed);
+  }
+
+  const json = (await response.json()) as { status: string; data: T };
+  return json.data;
+}
+
+export async function createBooking(
+  payload: CalculateJourneyPayload,
+  token: string,
+  signal?: AbortSignal
+): Promise<CreateBookingResponse> {
+  return postWithAuth<CreateBookingResponse>('/bookings', payload, token, signal);
+}
+
+export async function confirmBookingPayment(
+  bookingId: string,
+  outcome: TestPaymentOutcome,
+  token: string,
+  paymentMethodToken?: StripeTestCardToken,
+  signal?: AbortSignal
+): Promise<BookingRecord> {
+  return postWithAuth<BookingRecord>(
+    `/bookings/${bookingId}/confirm-payment`,
+    paymentMethodToken ? { outcome, paymentMethodToken } : { outcome },
+    token,
+    signal
+  );
+}
+
+export async function fetchMyBookings(
+  token: string,
+  signal?: AbortSignal
+): Promise<BookingRecord[]> {
+  return fetchWithAuth<BookingRecord[]>('/bookings/me', token, signal);
+}
+
+export async function fetchBookingById(
+  bookingId: string,
+  token: string,
+  signal?: AbortSignal
+): Promise<BookingRecord> {
+  return fetchWithAuth<BookingRecord>(`/bookings/${bookingId}`, token, signal);
+}
+
+export async function createStripeCheckoutSession(
+  bookingId: string,
+  token: string,
+  appReturnUrl?: string,
+  signal?: AbortSignal
+): Promise<{ sessionId: string; checkoutUrl: string; mode: string }> {
+  return postWithAuth<{ sessionId: string; checkoutUrl: string; mode: string }>(
+    `/bookings/${bookingId}/checkout-session`,
+    appReturnUrl ? { appReturnUrl } : {},
+    token,
+    signal
+  );
+}
+
+export async function verifyStripeCheckoutSession(
+  bookingId: string,
+  token: string,
+  signal?: AbortSignal
+): Promise<BookingRecord> {
+  return postWithAuth<BookingRecord>(
+    `/bookings/${bookingId}/verify-stripe-session`,
+    {},
+    token,
+    signal
+  );
 }
 
 // ---------------------------------------------------------------------------
