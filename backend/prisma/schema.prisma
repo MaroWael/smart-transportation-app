@@ -48,16 +48,24 @@ enum TicketStatus {
   REVOKED
 }
 
+enum ValidationResult {
+  VALID
+  ALREADY_USED
+  EXPIRED
+  INVALID
+}
+
 model User {
-  id           String    @id @default(uuid())
+  id           String             @id @default(uuid())
   fullName     String
-  email        String    @unique
+  email        String             @unique
   passwordHash String
-  role         Role      @default(PASSENGER)
-  isActive     Boolean   @default(true)
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  role         Role               @default(PASSENGER)
+  isActive     Boolean            @default(true)
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
   bookings     Booking[]
+  validations  TicketValidation[]
 
   @@index([role])
 }
@@ -201,16 +209,34 @@ model Payment {
 }
 
 model Ticket {
-  id         String       @id @default(uuid())
-  bookingId  String       @unique
-  ticketCode String       @unique
-  qrPayload  String       @unique
-  status     TicketStatus @default(ACTIVE)
-  issuedAt   DateTime     @default(now())
-  expiresAt  DateTime
-  usedAt     DateTime?
+  id          String             @id @default(uuid())
+  bookingId   String             @unique
+  ticketCode  String             @unique
+  qrPayload   String             @unique
+  status      TicketStatus       @default(ACTIVE)
+  issuedAt    DateTime           @default(now())
+  expiresAt   DateTime
+  usedAt      DateTime?
 
-  booking Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  booking     Booking            @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  validations TicketValidation[]
 
   @@index([status])
+}
+
+model TicketValidation {
+  id          String           @id @default(uuid())
+  ticketId    String?
+  employeeId  String
+  scannedCode String
+  result      ValidationResult
+  stationName String?
+  notes       String?
+  validatedAt DateTime         @default(now())
+
+  ticket   Ticket? @relation(fields: [ticketId], references: [id], onDelete: SetNull)
+  employee User    @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@index([employeeId, validatedAt])
+  @@index([ticketId, validatedAt])
 }

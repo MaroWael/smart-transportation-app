@@ -762,3 +762,70 @@ export function useBusRoute(id: string | undefined) {
 
   return { data, loading, error, errorKey, refetch };
 }
+
+// ---------------------------------------------------------------------------
+// Staff Ticket Validation API (O8)
+// ---------------------------------------------------------------------------
+
+export type ValidationResultType = 'VALID' | 'ALREADY_USED' | 'EXPIRED' | 'INVALID';
+
+export type ValidatedTicketSummary = {
+  id: string;
+  ticketCode: string;
+  status: 'ACTIVE' | 'USED' | 'EXPIRED' | 'REVOKED';
+  issuedAt: string;
+  expiresAt: string;
+  usedAt: string | null;
+  booking: {
+    id: string;
+    transportType: TransportType;
+    originName: string;
+    destinationName: string;
+    busRoute: { id: string; code: string; nameEn: string } | null;
+    stopCount: number;
+    totalAmount: number;
+    currency: string;
+    passengerName: string;
+  };
+};
+
+export type TicketValidationResponse = {
+  valid: boolean;
+  result: ValidationResultType;
+  message: string;
+  ticket: ValidatedTicketSummary | null;
+  validation: {
+    id: string;
+    result: ValidationResultType;
+    scannedCode: string;
+    stationName: string | null;
+    notes: string | null;
+    validatedAt: string;
+  };
+};
+
+export type TicketValidationLogItem = {
+  id: string;
+  result: ValidationResultType;
+  scannedCode: string;
+  stationName: string | null;
+  notes: string | null;
+  validatedAt: string;
+  employee: { id: string; fullName: string; email: string };
+  ticket: ValidatedTicketSummary | null;
+};
+
+export async function validateTicketApi(
+  payload: { qrPayload?: string; ticketCode?: string; stationName?: string },
+  token: string
+): Promise<TicketValidationResponse> {
+  return postWithAuth<TicketValidationResponse>('/tickets/validate', payload, token);
+}
+
+export async function fetchTicketValidations(
+  token: string,
+  signal?: AbortSignal
+): Promise<TicketValidationLogItem[]> {
+  return fetchWithAuth<TicketValidationLogItem[]>('/tickets/validations', token, signal);
+}
+

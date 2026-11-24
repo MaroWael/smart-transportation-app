@@ -24,23 +24,44 @@ async function main(): Promise<void> {
   });
 
   if (existingAdmin) {
-    console.log('⏩  Admin already exists, skipping seed.');
-    return;
+    console.log('⏩  Admin already exists, skipping admin seed.');
+  } else {
+    const passwordHash = await hash(env.ADMIN_PASSWORD, 10);
+
+    await prisma.user.create({
+      data: {
+        fullName: 'Admin',
+        email: env.ADMIN_EMAIL,
+        passwordHash,
+        role: 'ADMIN',
+        isActive: true,
+      },
+    });
+
+    console.log(`✅  Admin user created (${env.ADMIN_EMAIL}).`);
   }
 
-  const passwordHash = await hash(env.ADMIN_PASSWORD, 10);
-
-  await prisma.user.create({
-    data: {
-      fullName: 'Admin',
-      email: env.ADMIN_EMAIL,
-      passwordHash,
-      role: 'ADMIN',
-      isActive: true,
-    },
+  // Seed default STATION_EMPLOYEE demo account for QR ticket validation
+  const staffEmail = 'staff@smarttransit.eg';
+  const existingStaff = await prisma.user.findUnique({
+    where: { email: staffEmail },
   });
 
-  console.log(`✅  Admin user created (${env.ADMIN_EMAIL}).`);
+  if (existingStaff) {
+    console.log('⏩  Station employee already exists, skipping staff seed.');
+  } else {
+    const staffPasswordHash = await hash('Staff1234!', 10);
+    await prisma.user.create({
+      data: {
+        fullName: 'Station Staff',
+        email: staffEmail,
+        passwordHash: staffPasswordHash,
+        role: 'STATION_EMPLOYEE',
+        isActive: true,
+      },
+    });
+    console.log(`✅  Station employee created (${staffEmail} / Staff1234!).`);
+  }
 }
 
 main()

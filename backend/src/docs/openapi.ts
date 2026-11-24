@@ -740,6 +740,48 @@ export const openapi = {
         },
       },
     },
+    "/api/tickets/validate": {
+      post: {
+        tags: ["Tickets"],
+        summary: "Validate a passenger QR ticket or manual ticket code (Station Staff / Admin)",
+        description:
+          "Verifies the HMAC-SHA256 QR signature (or looks up by ticketCode), marks valid ACTIVE tickets as USED to prevent reuse, and logs every validation attempt.",
+        security: [{ bearerAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                properties: {
+                  qrPayload: { type: "string", example: "ST1.ST-A1B2C3D4.12345678.abcdef0123456789" },
+                  ticketCode: { type: "string", example: "ST-A1B2C3D4" },
+                  stationName: { type: "string", example: "Sadat" },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          "200": { description: "Validation outcome (VALID, ALREADY_USED, EXPIRED, INVALID)" },
+          "400": { description: "Missing qrPayload and ticketCode" },
+          "401": { description: "Unauthorized" },
+          "403": { description: "Forbidden (requires STATION_EMPLOYEE or ADMIN role)" },
+        },
+      },
+    },
+    "/api/tickets/validations": {
+      get: {
+        tags: ["Tickets"],
+        summary: "List recent ticket validations (Station Staff / Admin)",
+        security: [{ bearerAuth: [] }],
+        responses: {
+          "200": { description: "Recent ticket validation log entries" },
+          "401": { description: "Unauthorized" },
+          "403": { description: "Forbidden (requires STATION_EMPLOYEE or ADMIN role)" },
+        },
+      },
+    },
   },
   components: {
     securitySchemes: {

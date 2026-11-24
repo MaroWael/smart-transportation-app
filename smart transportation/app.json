@@ -36,7 +36,13 @@
       ],
       "expo-secure-store",
       "expo-localization",
-      "expo-web-browser"
+      "expo-web-browser",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow Smart Transportation to use your camera to scan passenger QR tickets."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,
