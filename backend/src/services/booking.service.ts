@@ -101,6 +101,40 @@ export async function createBooking(userId: string, input: CreateBookingInput) {
   // Always compute authoritative fare and validate route server-side
   const journey = await calculateJourney(input);
 
+  // Reuse an existing PENDING booking for the exact same user + route so dismissing
+  // and retrying checkout updates the same booking instead of leaving duplicate PENDING rows.
+  const existingPending = await prisma.booking.findFirst({
+    where: {
+      userId,
+      status: 'PENDING',
+      transportType: journey.transportType,
+      originStationId:
+        input.transportType === 'METRO' ? input.originStationId : null,
+      destinationStationId:
+        input.transportType === 'METRO' ? input.destinationStationId : null,
+      busRouteId: input.transportType === 'BUS' ? input.busRouteId : null,
+      originStopId: input.transportType === 'BUS' ? input.originStopId : null,
+      destinationStopId:
+        input.transportType === 'BUS' ? input.destinationStopId : null,
+    },
+    orderBy: { createdAt: 'desc' },
+    include: bookingInclude,
+  });
+
+  if (existingPending && existingPending.payment) {
+    const formatted = await formatBooking(existingPending, false);
+    return {
+      booking: formatted,
+      stripe: {
+        paymentIntentId: existingPending.payment.stripePaymentIntentId,
+        clientSecret: `${existingPending.payment.stripePaymentIntentId}_secret_reused`,
+        mode: existingPending.payment.stripePaymentIntentId.startsWith('pi_sim_')
+          ? ('simulated_test' as const)
+          : ('stripe_test' as const),
+      },
+    };
+  }
+
   const intent = await createTestPaymentIntent(
     journey.fare.amount,
     journey.fare.currency,

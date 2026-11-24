@@ -434,74 +434,70 @@ export function StripePaymentSheet({
             )}
           </Pressable>
 
-          {/* Cancel Payment Action (inline 2-step confirm — works reliably inside Modal on Android, iOS & Web) */}
-          {confirmingCancel ? (
-            <View
-              style={[
-                styles.confirmCancelBar,
-                {
-                  backgroundColor: theme.errorSoft,
-                  borderColor: theme.border,
-                },
-              ]}
-            >
-              <Text
-                style={[styles.confirmCancelText, { color: theme.textPrimary }]}
-              >
-                Cancel this booking?
+          {/* Cancel Payment Action */}
+          <Pressable
+            accessibilityRole="button"
+            disabled={busy}
+            onPress={() => setConfirmingCancel(true)}
+            style={({ pressed }) => [
+              styles.cancelBtn,
+              { opacity: busy ? 0.5 : pressed ? 0.65 : 1 },
+            ]}
+          >
+            <Text style={[styles.cancelText, { color: theme.textSecondary }]}>
+              Cancel payment
+            </Text>
+          </Pressable>
+        </View>
+
+        {/* Centered Cancel Confirmation Dialog (identical style to Journey screen) */}
+        {confirmingCancel ? (
+          <View style={styles.confirmOverlay}>
+            <Pressable
+              style={styles.confirmBackdrop}
+              onPress={() => {
+                if (!busy) setConfirmingCancel(false);
+              }}
+            />
+            <View style={styles.confirmDialog}>
+              <View style={styles.confirmIconCircle}>
+                <Ionicons name="alert-circle" size={26} color="#DC2626" />
+              </View>
+              <Text style={styles.confirmTitle}>Cancel payment?</Text>
+              <Text style={styles.confirmMessage}>
+                Your pending reservation will be cancelled and no charge will be made.
               </Text>
-              <View style={styles.confirmCancelBtns}>
+              <View style={styles.confirmActions}>
                 <Pressable
                   accessibilityRole="button"
                   disabled={busy}
                   onPress={() => setConfirmingCancel(false)}
-                  style={[
+                  style={({ pressed }) => [
                     styles.confirmKeepBtn,
-                    { backgroundColor: theme.surface, borderColor: theme.border },
+                    pressed && { opacity: 0.75 },
                   ]}
                 >
-                  <Text
-                    style={[
-                      styles.confirmKeepText,
-                      { color: theme.textPrimary },
-                    ]}
-                  >
-                    Keep
-                  </Text>
+                  <Text style={styles.confirmKeepText}>Keep</Text>
                 </Pressable>
                 <Pressable
                   accessibilityRole="button"
                   disabled={busy}
                   onPress={() => void executeCancel()}
-                  style={[
-                    styles.confirmYesBtn,
-                    { backgroundColor: theme.error },
+                  style={({ pressed }) => [
+                    styles.confirmCancelBtn,
+                    pressed && { opacity: 0.85 },
                   ]}
                 >
                   {cancelling ? (
                     <ActivityIndicator size="small" color="#FFFFFF" />
                   ) : (
-                    <Text style={styles.confirmYesText}>Yes, cancel</Text>
+                    <Text style={styles.confirmCancelText}>Yes, cancel</Text>
                   )}
                 </Pressable>
               </View>
             </View>
-          ) : (
-            <Pressable
-              accessibilityRole="button"
-              disabled={busy}
-              onPress={() => setConfirmingCancel(true)}
-              style={({ pressed }) => [
-                styles.cancelBtn,
-                { opacity: busy ? 0.5 : pressed ? 0.65 : 1 },
-              ]}
-            >
-              <Text style={[styles.cancelText, { color: theme.textSecondary }]}>
-                Cancel payment
-              </Text>
-            </Pressable>
-          )}
-        </View>
+          </View>
+        ) : null}
       </KeyboardAvoidingView>
     </Modal>
   );
@@ -718,50 +714,94 @@ const styles = StyleSheet.create({
     fontSize: 13.5,
     fontWeight: '600',
   },
-  confirmCancelBar: {
-    marginTop: 10,
-    borderRadius: 12,
-    borderWidth: 1,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    flexDirection: 'row',
+  confirmOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: 'center',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    paddingHorizontal: 24,
+    zIndex: 20,
+  },
+  confirmBackdrop: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(15, 23, 42, 0.45)',
+  },
+  confirmDialog: {
+    width: '100%',
+    maxWidth: 340,
+    borderRadius: 22,
+    backgroundColor: '#FFFFFF',
+    padding: 22,
+    alignItems: 'center',
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.18,
+    shadowRadius: 24,
+    elevation: 16,
+  },
+  confirmIconCircle: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#FEF2F2',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
+  },
+  confirmTitle: {
+    fontFamily: fontFamily.bold,
+    fontSize: 17,
+    fontWeight: '700',
+    color: '#0F172A',
+    textAlign: 'center',
+    marginBottom: 6,
+  },
+  confirmMessage: {
+    fontFamily: fontFamily.regular,
+    fontSize: 13.5,
+    color: '#64748B',
+    textAlign: 'center',
+    lineHeight: 19,
+    marginBottom: 20,
+  },
+  confirmActions: {
+    flexDirection: 'row',
     gap: 10,
-  },
-  confirmCancelText: {
-    fontFamily: fontFamily.semiBold,
-    fontSize: 13,
-    fontWeight: '600',
-    flex: 1,
-  },
-  confirmCancelBtns: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
+    width: '100%',
   },
   confirmKeepBtn: {
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderRadius: 8,
-    borderWidth: 1,
+    flex: 1,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: '#F1F5F9',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   confirmKeepText: {
     fontFamily: fontFamily.semiBold,
-    fontSize: 12.5,
+    fontSize: 14,
     fontWeight: '600',
+    color: '#334155',
   },
-  confirmYesBtn: {
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderRadius: 8,
-    minWidth: 82,
+  confirmCancelBtn: {
+    flex: 1,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: '#DC2626',
     alignItems: 'center',
+    justifyContent: 'center',
   },
-  confirmYesText: {
+  confirmCancelText: {
     color: '#FFFFFF',
-    fontFamily: fontFamily.bold,
-    fontSize: 12.5,
-    fontWeight: '700',
+    fontFamily: fontFamily.semiBold,
+    fontSize: 14,
+    fontWeight: '600',
   },
 });

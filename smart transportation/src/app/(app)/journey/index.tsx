@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 
 import {
@@ -57,6 +57,7 @@ export default function JourneyPlannerScreen() {
   const theme = useTheme();
   const { token, logout } = useAuth();
   const router = useRouter();
+  const { cancelled } = useLocalSearchParams<{ cancelled?: string }>();
 
   const [mode, setMode] = useState<TransportType>('METRO');
 
@@ -130,14 +131,35 @@ export default function JourneyPlannerScreen() {
     return () => controller.abort();
   }, [token, selectedBusRoute, logout]);
 
+  const [sheetDismissedPending, setSheetDismissedPending] = useState(false);
+
+  useEffect(() => {
+    if (cancelled === '1') {
+      setInfoNotice('Payment cancelled');
+    }
+  }, [cancelled]);
+
+  const abandonPendingBooking = () => {
+    setSheetDismissedPending(false);
+    if (token && pendingBookingId) {
+      const idToCancel = pendingBookingId;
+      setPendingBookingId(null);
+      void confirmBookingPayment(idToCancel, 'CANCELLED', token).catch(() => {});
+    }
+  };
+
   const handleModeChange = (nextMode: TransportType) => {
+    abandonPendingBooking();
     setMode(nextMode);
     setErrorMessage(null);
+    setInfoNotice(null);
     setResult(null);
   };
 
   const handleSwap = () => {
+    abandonPendingBooking();
     setErrorMessage(null);
+    setInfoNotice(null);
     setResult(null);
     if (mode === 'METRO') {
       const prevOrigin = originStation;
@@ -232,45 +254,52 @@ export default function JourneyPlannerScreen() {
     t,
   ]);
 
-  const [openingCheckout, setOpeningCheckout] = useState(false);
+  const [cancellingPending, setCancellingPending] = useState(false);
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
 
-  const handleOpenCheckoutSheet = async () => {
+  const buildBookingPayload = () =>
+    mode === 'METRO'
+      ? {
+          transportType: 'METRO' as const,
+          originStationId: originStation!.id,
+          destinationStationId: destStation!.id,
+        }
+      : {
+          transportType: 'BUS' as const,
+          busRouteId: selectedBusRoute!.id,
+          originStopId: originStop!.id,
+          destinationStopId: destStop!.id,
+        };
+
+  const handleOpenCheckoutSheet = () => {
     if (!token || !result) return;
     setSheetError(null);
     setInfoNotice(null);
     setErrorMessage(null);
-    setOpeningCheckout(true);
-    try {
-      // Create a real PENDING booking + Stripe PaymentIntent immediately so Cancel & Retry are 100% real
-      const payload =
-        mode === 'METRO'
-          ? {
-              transportType: 'METRO' as const,
-              originStationId: originStation!.id,
-              destinationStationId: destStation!.id,
-            }
-          : {
-              transportType: 'BUS' as const,
-              busRouteId: selectedBusRoute!.id,
-              originStopId: originStop!.id,
-              destinationStopId: destStop!.id,
-            };
-      const created = await createBooking(payload, token);
-      setPendingBookingId(created.booking.id);
-      setSheetVisible(true);
-    } catch (err) {
-      if (err instanceof ApiError && err.status === 401) {
-        await logout();
-        return;
-      }
-      const key = getStatusErrorKey(err);
-      setErrorMessage(t(key as any) as string);
-    } finally {
-      setOpeningCheckout(false);
+    setSheetVisible(true);
+  };
+
+  // Only mark as PENDING when the user dismisses the sheet (X / backdrop / swipe back)
+  const handleDismissSheet = () => {
+    setSheetVisible(false);
+    setSheetError(null);
+    setSheetDismissedPending(true);
+
+    if (token && result && !pendingBookingId) {
+      void createBooking(buildBookingPayload(), token)
+        .then((created) => {
+          setPendingBookingId(created.booking.id);
+        })
+        .catch(() => {
+          // Ignore network errors when saving pending state on dismiss
+        });
     }
   };
 
   const handleCancelPayment = async () => {
+    setCancellingPending(true);
+    setSheetDismissedPending(false);
+    setShowCancelConfirm(false);
     if (token && pendingBookingId) {
       try {
         await confirmBookingPayment(pendingBookingId, 'CANCELLED', token);
@@ -279,22 +308,40 @@ export default function JourneyPlannerScreen() {
       }
       setPendingBookingId(null);
     }
+    setCancellingPending(false);
     setSheetVisible(false);
-    setInfoNotice('Payment cancelled. No charge was made.');
+
+    // Return user to clean start/end selection with a dismissible cancellation toast
+    setOriginStation(null);
+    setDestStation(null);
+    setSelectedBusRoute(null);
+    setOriginStop(null);
+    setDestStop(null);
+    setResult(null);
+    setShowStops(false);
+    setErrorMessage(null);
+    setInfoNotice('Payment cancelled');
   };
 
   const handlePayNow = async (
     outcome: TestPaymentOutcome,
     paymentMethodToken: StripeTestCardToken
   ): Promise<{ ok: boolean; error?: string }> => {
-    if (!token || !pendingBookingId) {
+    if (!token || !result) {
       return { ok: false, error: 'Booking session expired. Please try again.' };
     }
     setPaying(true);
     setSheetError(null);
     try {
+      let bookingId = pendingBookingId;
+      if (!bookingId) {
+        const created = await createBooking(buildBookingPayload(), token);
+        bookingId = created.booking.id;
+        setPendingBookingId(bookingId);
+      }
+
       const confirmed = await confirmBookingPayment(
-        pendingBookingId,
+        bookingId,
         outcome,
         token,
         paymentMethodToken
@@ -302,6 +349,7 @@ export default function JourneyPlannerScreen() {
       if (confirmed.status === 'CONFIRMED') {
         setSheetVisible(false);
         setPendingBookingId(null);
+        setSheetDismissedPending(false);
         router.replace(`/tickets/${confirmed.id}` as any);
         return { ok: true };
       }
@@ -378,6 +426,7 @@ export default function JourneyPlannerScreen() {
   }, [pickerKind, t]);
 
   return (
+    <View style={styles.root}>
     <Screen scrollable contentContainerStyle={styles.container}>
       <ScreenHeader
         title={t('journey.title')}
@@ -737,32 +786,42 @@ export default function JourneyPlannerScreen() {
               </View>
             )}
 
-            {infoNotice ? (
-              <View
-                style={[
-                  styles.infoBanner,
-                  { backgroundColor: theme.surfaceAlt, borderColor: theme.border },
-                ]}
-              >
-                <Ionicons
-                  name="information-circle-outline"
-                  size={16}
-                  color={theme.textSecondary}
-                />
-                <Text
-                  style={[styles.infoBannerText, { color: theme.textSecondary }]}
+            {sheetDismissedPending && !sheetVisible ? (
+              <View style={styles.pendingBanner}>
+                <View style={styles.pendingIconWrap}>
+                  <Ionicons name="time" size={17} color="#D97706" />
+                </View>
+                <View style={styles.pendingBannerTextCol}>
+                  <Text style={styles.pendingBannerTitle}>
+                    Payment pending
+                  </Text>
+                  <Text style={styles.pendingBannerSub}>
+                    Resume below to complete, or cancel.
+                  </Text>
+                </View>
+                <Pressable
+                  accessibilityRole="button"
+                  disabled={cancellingPending}
+                  onPress={() => setShowCancelConfirm(true)}
+                  style={({ pressed }) => [
+                    styles.pendingCancelBtn,
+                    pressed && { opacity: 0.7 },
+                  ]}
                 >
-                  {infoNotice}
-                </Text>
+                  <Text style={styles.pendingCancelText}>
+                    {cancellingPending ? '...' : 'Cancel'}
+                  </Text>
+                </Pressable>
               </View>
             ) : null}
 
             <Button
-              onPress={() => void handleOpenCheckoutSheet()}
-              loading={openingCheckout}
+              onPress={handleOpenCheckoutSheet}
               style={styles.bookBtn}
             >
-              {`Pay ${result.fare.amount} ${result.fare.currency}`}
+              {sheetDismissedPending && !sheetVisible
+                ? `Resume Payment · ${result.fare.amount} ${result.fare.currency}`
+                : `Pay ${result.fare.amount} ${result.fare.currency}`}
             </Button>
           </Card>
 
@@ -856,7 +915,7 @@ export default function JourneyPlannerScreen() {
         }
         processing={paying}
         externalError={sheetError}
-        onClose={() => setSheetVisible(false)}
+        onClose={handleDismissSheet}
         onCancel={handleCancelPayment}
         onSubmit={handlePayNow}
       />
@@ -917,7 +976,9 @@ export default function JourneyPlannerScreen() {
               <Pressable
                 accessibilityRole="button"
                 onPress={() => {
+                  abandonPendingBooking();
                   setErrorMessage(null);
+                  setInfoNotice(null);
                   setResult(null);
                   if (pickerKind === 'metro-origin') {
                     setOriginStation(item as StationItem);
@@ -974,11 +1035,104 @@ export default function JourneyPlannerScreen() {
           />
         </SafeAreaView>
       </Modal>
+
+      {/* Cancel Pending Booking Confirmation Dialog */}
+      <Modal
+        visible={showCancelConfirm}
+        transparent
+        animationType="fade"
+        onRequestClose={() => {
+          if (!cancellingPending) setShowCancelConfirm(false);
+        }}
+      >
+        <View style={styles.confirmOverlay}>
+          <Pressable
+            style={styles.confirmBackdrop}
+            onPress={() => {
+              if (!cancellingPending) setShowCancelConfirm(false);
+            }}
+          />
+          <View style={styles.confirmDialog}>
+            <View style={styles.confirmIconCircle}>
+              <Ionicons name="alert-circle" size={26} color="#DC2626" />
+            </View>
+            <Text style={styles.confirmTitle}>Cancel pending payment?</Text>
+            <Text style={styles.confirmMessage}>
+              Your pending reservation will be cancelled and no charge will be made.
+            </Text>
+            <View style={styles.confirmActions}>
+              <Pressable
+                accessibilityRole="button"
+                disabled={cancellingPending}
+                onPress={() => setShowCancelConfirm(false)}
+                style={({ pressed }) => [
+                  styles.confirmKeepBtn,
+                  pressed && { opacity: 0.75 },
+                ]}
+              >
+                <Text style={styles.confirmKeepText}>Keep</Text>
+              </Pressable>
+              <Pressable
+                accessibilityRole="button"
+                disabled={cancellingPending}
+                onPress={() => void handleCancelPayment()}
+                style={({ pressed }) => [
+                  styles.confirmCancelBtn,
+                  pressed && { opacity: 0.85 },
+                ]}
+              >
+                <Text style={styles.confirmCancelText}>
+                  {cancellingPending ? 'Cancelling...' : 'Yes, cancel'}
+                </Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </Screen>
+
+    {/* Centered Payment Cancelled Dialog (matches confirmation dialog style) */}
+    <Modal
+      visible={Boolean(infoNotice)}
+      transparent
+      animationType="fade"
+      onRequestClose={() => setInfoNotice(null)}
+    >
+      <View style={styles.confirmOverlay}>
+        <Pressable
+          style={styles.confirmBackdrop}
+          onPress={() => setInfoNotice(null)}
+        />
+        <View style={styles.confirmDialog}>
+          <View style={styles.confirmIconCircle}>
+            <Ionicons name="close-circle" size={28} color="#DC2626" />
+          </View>
+          <Text style={styles.confirmTitle}>Payment cancelled</Text>
+          <Text style={styles.confirmMessage}>
+            Your booking has been cancelled and no charge was made to your card.
+          </Text>
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => setInfoNotice(null)}
+            style={({ pressed }) => [
+              styles.cancelledOkBtn,
+              { backgroundColor: theme.primary },
+              pressed && { opacity: 0.85 },
+            ]}
+          >
+            <Text style={styles.cancelledOkText}>Done</Text>
+          </Pressable>
+        </View>
+      </View>
+    </Modal>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  root: {
+    flex: 1,
+  },
   container: {
     paddingBottom: spacing.xl,
   },
@@ -1175,6 +1329,150 @@ const styles = StyleSheet.create({
     flex: 1,
     fontFamily: fontFamily.regular,
     fontSize: fontSize.caption,
+  },
+  cancelledOkBtn: {
+    width: '100%',
+    height: 44,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cancelledOkText: {
+    fontFamily: fontFamily.semiBold,
+    fontSize: 14.5,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  confirmOverlay: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 24,
+  },
+  confirmBackdrop: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(15, 23, 42, 0.45)',
+  },
+  confirmDialog: {
+    width: '100%',
+    maxWidth: 340,
+    borderRadius: 22,
+    backgroundColor: '#FFFFFF',
+    padding: 22,
+    alignItems: 'center',
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.18,
+    shadowRadius: 24,
+    elevation: 12,
+  },
+  confirmIconCircle: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#FEF2F2',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
+  },
+  confirmTitle: {
+    fontFamily: fontFamily.bold,
+    fontSize: 17,
+    fontWeight: '700',
+    color: '#0F172A',
+    textAlign: 'center',
+    marginBottom: 6,
+  },
+  confirmMessage: {
+    fontFamily: fontFamily.regular,
+    fontSize: 13.5,
+    color: '#64748B',
+    textAlign: 'center',
+    lineHeight: 19,
+    marginBottom: 20,
+  },
+  confirmActions: {
+    flexDirection: 'row',
+    gap: 10,
+    width: '100%',
+  },
+  confirmKeepBtn: {
+    flex: 1,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: '#F1F5F9',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  confirmKeepText: {
+    fontFamily: fontFamily.semiBold,
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#334155',
+  },
+  confirmCancelBtn: {
+    flex: 1,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: '#DC2626',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  confirmCancelText: {
+    fontFamily: fontFamily.semiBold,
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  pendingBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 11,
+    borderRadius: 14,
+    borderWidth: 1,
+    backgroundColor: '#FFFFFF',
+    borderColor: '#E2E8F0',
+  },
+  pendingIconWrap: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#FEF3C7',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  pendingBannerTextCol: {
+    flex: 1,
+    gap: 1,
+  },
+  pendingBannerTitle: {
+    fontFamily: fontFamily.semiBold,
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#0F172A',
+  },
+  pendingBannerSub: {
+    fontFamily: fontFamily.regular,
+    fontSize: 12,
+    color: '#64748B',
+  },
+  pendingCancelBtn: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 999,
+    backgroundColor: '#F1F5F9',
+  },
+  pendingCancelText: {
+    fontFamily: fontFamily.semiBold,
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#475569',
   },
   pathCard: {},
   pathCardContent: {

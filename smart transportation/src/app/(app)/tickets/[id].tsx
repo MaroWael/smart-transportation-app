@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Image, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
@@ -40,6 +40,7 @@ export default function TicketDetailScreen() {
   const [sheetVisible, setSheetVisible] = useState(false);
   const [paying, setPaying] = useState(false);
   const [sheetError, setSheetError] = useState<string | null>(null);
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
 
   const loadBooking = useCallback(async () => {
     if (!token || !id) return;
@@ -106,9 +107,11 @@ export default function TicketDetailScreen() {
   const handleCancelBooking = async () => {
     if (!token || !id) return;
     setPaying(true);
+    setShowCancelConfirm(false);
     try {
-      const updated = await confirmBookingPayment(id, 'CANCELLED', token);
-      setBooking(updated);
+      await confirmBookingPayment(id, 'CANCELLED', token);
+      setSheetVisible(false);
+      router.replace('/journey?cancelled=1' as any);
     } catch (err) {
       if (err instanceof ApiError && err.status === 401) {
         await logout();
@@ -360,7 +363,7 @@ export default function TicketDetailScreen() {
                 <Pressable
                   accessibilityRole="button"
                   disabled={paying}
-                  onPress={() => void handleCancelBooking()}
+                  onPress={() => setShowCancelConfirm(true)}
                   style={styles.cancelLink}
                 >
                   <Text
@@ -411,6 +414,60 @@ export default function TicketDetailScreen() {
         }}
         onSubmit={handlePaySubmit}
       />
+
+      {/* Centered Cancel Confirmation Dialog */}
+      <Modal
+        visible={showCancelConfirm}
+        transparent
+        animationType="fade"
+        onRequestClose={() => {
+          if (!paying) setShowCancelConfirm(false);
+        }}
+      >
+        <View style={styles.confirmOverlay}>
+          <Pressable
+            style={styles.confirmBackdrop}
+            onPress={() => {
+              if (!paying) setShowCancelConfirm(false);
+            }}
+          />
+          <View style={styles.confirmDialog}>
+            <View style={styles.confirmIconCircle}>
+              <Ionicons name="alert-circle" size={26} color="#DC2626" />
+            </View>
+            <Text style={styles.confirmTitle}>Cancel payment?</Text>
+            <Text style={styles.confirmMessage}>
+              Your pending reservation will be cancelled and no charge will be made.
+            </Text>
+            <View style={styles.confirmActions}>
+              <Pressable
+                accessibilityRole="button"
+                disabled={paying}
+                onPress={() => setShowCancelConfirm(false)}
+                style={({ pressed }) => [
+                  styles.confirmKeepBtn,
+                  pressed && { opacity: 0.75 },
+                ]}
+              >
+                <Text style={styles.confirmKeepText}>Keep</Text>
+              </Pressable>
+              <Pressable
+                accessibilityRole="button"
+                disabled={paying}
+                onPress={() => void handleCancelBooking()}
+                style={({ pressed }) => [
+                  styles.confirmCancelBtn,
+                  pressed && { opacity: 0.85 },
+                ]}
+              >
+                <Text style={styles.confirmCancelText}>
+                  {paying ? 'Cancelling...' : 'Yes, cancel'}
+                </Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </Screen>
   );
 }
@@ -625,5 +682,90 @@ const styles = StyleSheet.create({
   cancelText: {
     fontFamily: fontFamily.semiBold,
     fontSize: fontSize.caption,
+  },
+  confirmOverlay: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 24,
+  },
+  confirmBackdrop: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(15, 23, 42, 0.45)',
+  },
+  confirmDialog: {
+    width: '100%',
+    maxWidth: 340,
+    borderRadius: 22,
+    backgroundColor: '#FFFFFF',
+    padding: 22,
+    alignItems: 'center',
+    shadowColor: '#0F172A',
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.18,
+    shadowRadius: 24,
+    elevation: 12,
+  },
+  confirmIconCircle: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#FEF2F2',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
+  },
+  confirmTitle: {
+    fontFamily: fontFamily.bold,
+    fontSize: 17,
+    fontWeight: '700',
+    color: '#0F172A',
+    textAlign: 'center',
+    marginBottom: 6,
+  },
+  confirmMessage: {
+    fontFamily: fontFamily.regular,
+    fontSize: 13.5,
+    color: '#64748B',
+    textAlign: 'center',
+    lineHeight: 19,
+    marginBottom: 20,
+  },
+  confirmActions: {
+    flexDirection: 'row',
+    gap: 10,
+    width: '100%',
+  },
+  confirmKeepBtn: {
+    flex: 1,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: '#F1F5F9',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  confirmKeepText: {
+    fontFamily: fontFamily.semiBold,
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#334155',
+  },
+  confirmCancelBtn: {
+    flex: 1,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: '#DC2626',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  confirmCancelText: {
+    fontFamily: fontFamily.semiBold,
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#FFFFFF',
   },
 });
