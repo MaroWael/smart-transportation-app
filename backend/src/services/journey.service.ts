@@ -229,58 +229,105 @@ async function calculateMetroJourney(
     throw new AppError('Origin or destination station not found', 404);
   }
 
-  // BFS shortest path (minimizing station hops, preferring fewer line transfers as tiebreaker via state)
-  interface QueueNode {
+  // State-space Dijkstra minimizing (station hops + transfer penalty).
+  // Transfer penalty = 8 stops so staying on the same line (direct route)
+  // is strongly preferred over unnecessary line transfers (e.g. Abbassiya -> Cairo University
+  // stays directly on Line 3 instead of transferring twice via Nasser & Sadat).
+  const TRANSFER_PENALTY = 8;
+
+  interface DijkstraState {
+    key: string;
     stationId: string;
-    viaLine: JourneyLineBadge | null;
+    line: JourneyLineBadge | null;
+    cost: number;
+    hops: number;
+    transfers: number;
   }
 
-  const queue: QueueNode[] = [{ stationId: originStationId, viaLine: null }];
-  const visited = new Set<string>([originStationId]);
-  const parent = new Map<string, { prevStationId: string; line: JourneyLineBadge }>();
+  const startKey = `${originStationId}|START`;
+  const dist = new Map<string, number>([[startKey, 0]]);
+  const prev = new Map<
+    string,
+    { prevKey: string; prevStationId: string; line: JourneyLineBadge }
+  >();
+  const heap: DijkstraState[] = [
+    {
+      key: startKey,
+      stationId: originStationId,
+      line: null,
+      cost: 0,
+      hops: 0,
+      transfers: 0,
+    },
+  ];
 
-  let found = false;
-  while (queue.length > 0) {
-    const current = queue.shift()!;
+  let bestEndKey: string | null = null;
+
+  while (heap.length > 0) {
+    // Extract minimum-cost state (graph has ~90 stations, so linear min-extract is < 0.2ms)
+    let bestIdx = 0;
+    for (let i = 1; i < heap.length; i++) {
+      const a = heap[i];
+      const b = heap[bestIdx];
+      if (
+        a.cost < b.cost ||
+        (a.cost === b.cost && a.transfers < b.transfers) ||
+        (a.cost === b.cost && a.transfers === b.transfers && a.hops < b.hops)
+      ) {
+        bestIdx = i;
+      }
+    }
+    const current = heap.splice(bestIdx, 1)[0];
+
+    if (current.cost > (dist.get(current.key) ?? Infinity)) {
+      continue;
+    }
+
     if (current.stationId === destinationStationId) {
-      found = true;
+      bestEndKey = current.key;
       break;
     }
 
     const edges = adjacency.get(current.stationId) ?? [];
-    // Prioritize continuing on the same line first so BFS naturally avoids unnecessary transfers
-    const orderedEdges = current.viaLine
-      ? [
-          ...edges.filter((e) => e.line.id === current.viaLine!.id),
-          ...edges.filter((e) => e.line.id !== current.viaLine!.id),
-        ]
-      : edges;
+    for (const edge of edges) {
+      const isTransfer =
+        current.line !== null && current.line.id !== edge.line.id;
+      const nextCost = current.cost + 1 + (isTransfer ? TRANSFER_PENALTY : 0);
+      const nextKey = `${edge.toStationId}|${edge.line.id}`;
 
-    for (const edge of orderedEdges) {
-      if (!visited.has(edge.toStationId)) {
-        visited.add(edge.toStationId);
-        parent.set(edge.toStationId, {
+      if (nextCost < (dist.get(nextKey) ?? Infinity)) {
+        dist.set(nextKey, nextCost);
+        prev.set(nextKey, {
+          prevKey: current.key,
           prevStationId: current.stationId,
           line: edge.line,
         });
-        queue.push({ stationId: edge.toStationId, viaLine: edge.line });
+        heap.push({
+          key: nextKey,
+          stationId: edge.toStationId,
+          line: edge.line,
+          cost: nextCost,
+          hops: current.hops + 1,
+          transfers: current.transfers + (isTransfer ? 1 : 0),
+        });
       }
     }
   }
 
-  if (!found) {
+  if (!bestEndKey) {
     throw new AppError('No valid metro route found between selected stations', 404);
   }
 
   // Reconstruct ordered path and edge lines
   const stationIds: string[] = [];
   const edgeLines: JourneyLineBadge[] = [];
-  let cursor = destinationStationId;
-  while (cursor !== originStationId) {
-    stationIds.push(cursor);
-    const step = parent.get(cursor)!;
+  let cursorKey = bestEndKey;
+  while (cursorKey !== startKey) {
+    const step = prev.get(cursorKey)!;
+    const [stationId] = cursorKey.split('|');
+    stationIds.push(stationId);
     edgeLines.push(step.line);
-    cursor = step.prevStationId;
+    cursorKey = step.prevKey;
   }
   stationIds.push(originStationId);
   stationIds.reverse();

@@ -714,72 +714,119 @@ export default function JourneyPlannerScreen() {
               </View>
             </View>
 
-            {/* Transfers Summary */}
+            {/* Direct Route or Modern Interchange Card */}
             {result.transfers.length === 0 ? (
-              <View style={styles.directRow}>
-                <Ionicons
-                  name="checkmark-circle"
-                  size={16}
-                  color={theme.primary}
-                />
-                <Text
-                  style={[styles.directText, { color: theme.textSecondary }]}
-                >
-                  {t('journey.directRoute')}
-                </Text>
+              <View style={styles.directPillBox}>
+                <View style={styles.directIconCircle}>
+                  <Ionicons name="checkmark" size={14} color="#16A34A" />
+                </View>
+                <View style={styles.directTextCol}>
+                  <Text style={styles.directTitle}>Direct Route</Text>
+                  <Text style={styles.directSub}>
+                    No line changes required
+                  </Text>
+                </View>
+                {result.path[0]?.line ? (
+                  <View
+                    style={[
+                      styles.lineBadgePill,
+                      { backgroundColor: result.path[0].line.color },
+                    ]}
+                  >
+                    <Text style={styles.lineBadgePillText}>
+                      Line {result.path[0].line.number}
+                    </Text>
+                  </View>
+                ) : null}
               </View>
             ) : (
-              <View style={styles.transfersList}>
-                <Text
-                  style={[styles.subHeading, { color: theme.textSecondary }]}
-                >
-                  {t('journey.transfersTitle')}
-                </Text>
+              <View style={styles.transfersSection}>
+                <View style={styles.transfersHeaderRow}>
+                  <Text
+                    style={[
+                      styles.subHeading,
+                      { color: theme.textSecondary, marginBottom: 0 },
+                    ]}
+                  >
+                    INTERCHANGE
+                  </Text>
+                  <View style={styles.transferCountPill}>
+                    <Text style={styles.transferCountText}>
+                      {result.transfers.length === 1
+                        ? '1 transfer'
+                        : `${result.transfers.length} transfers`}
+                    </Text>
+                  </View>
+                </View>
+
                 {result.transfers.map((tr) => (
                   <View
                     key={`${tr.stationId}-${tr.toLine.id}`}
-                    style={[
-                      styles.transferItem,
-                      { backgroundColor: theme.surfaceAlt },
-                    ]}
+                    style={styles.transferCard}
                   >
-                    <Ionicons
-                      name="swap-horizontal"
-                      size={16}
-                      color={theme.primary}
-                    />
-                    <Text
-                      style={[
-                        styles.transferText,
-                        { color: theme.textPrimary },
-                      ]}
-                    >
-                      {t('journey.transferAt', { station: tr.stationName })}
-                    </Text>
-                    <View
-                      style={[
-                        styles.miniPill,
-                        { backgroundColor: tr.fromLine.color },
-                      ]}
-                    >
-                      <Text style={styles.miniPillText}>
-                        {tr.fromLine.number}
+                    {/* Dual-color vertical rail indicator */}
+                    <View style={styles.transferRailCol}>
+                      <View
+                        style={[
+                          styles.transferRailHalf,
+                          { backgroundColor: tr.fromLine.color },
+                        ]}
+                      />
+                      <View style={styles.transferRailDot}>
+                        <Ionicons
+                          name="swap-vertical"
+                          size={11}
+                          color="#0F172A"
+                        />
+                      </View>
+                      <View
+                        style={[
+                          styles.transferRailHalf,
+                          { backgroundColor: tr.toLine.color },
+                        ]}
+                      />
+                    </View>
+
+                    {/* Station name & instruction */}
+                    <View style={styles.transferBody}>
+                      <Text
+                        numberOfLines={1}
+                        style={styles.transferStationTitle}
+                      >
+                        Change at {tr.stationName}
+                      </Text>
+                      <Text style={styles.transferSubText}>
+                        Line {tr.fromLine.number} to Line {tr.toLine.number}
                       </Text>
                     </View>
-                    <Ionicons
-                      name="arrow-forward"
-                      size={12}
-                      color={theme.textSecondary}
-                    />
-                    <View
-                      style={[
-                        styles.miniPill,
-                        { backgroundColor: tr.toLine.color },
-                      ]}
-                    >
-                      <Text style={styles.miniPillText}>
-                        {tr.toLine.number}
-                      </Text>
+
+                    {/* Crisp Line Pills */}
+                    <View style={styles.transferBadgesWrap}>
+                      <View
+                        style={[
+                          styles.lineBadgePill,
+                          { backgroundColor: tr.fromLine.color },
+                        ]}
+                      >
+                        <Text style={styles.lineBadgePillText}>
+                          L{tr.fromLine.number}
+                        </Text>
+                      </View>
+                      <Ionicons
+                        name="chevron-forward"
+                        size={14}
+                        color="#94A3B8"
+                      />
+                      <View
+                        style={[
+                          styles.lineBadgePill,
+                          { backgroundColor: tr.toLine.color },
+                        ]}
+                      >
+                        <Text style={styles.lineBadgePillText}>
+                          L{tr.toLine.number}
+                        </Text>
+                      </View>
                     </View>
                   </View>
                 ))}
@@ -1267,17 +1314,59 @@ const styles = StyleSheet.create({
     fontSize: fontSize.sm,
     fontWeight: '600',
   },
-  directRow: {
+  directPillBox: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 14,
+    backgroundColor: '#F0FDF4',
+    borderWidth: 1,
+    borderColor: '#BBF7D0',
   },
-  directText: {
+  directIconCircle: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: '#DCFCE7',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  directTextCol: {
+    flex: 1,
+    gap: 1,
+  },
+  directTitle: {
+    fontFamily: fontFamily.semiBold,
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#14532D',
+  },
+  directSub: {
     fontFamily: fontFamily.regular,
-    fontSize: fontSize.caption,
+    fontSize: 11.5,
+    color: '#166534',
   },
-  transfersList: {
-    gap: 6,
+  transfersSection: {
+    gap: 8,
+  },
+  transfersHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  transferCountPill: {
+    paddingHorizontal: 9,
+    paddingVertical: 3,
+    borderRadius: 999,
+    backgroundColor: '#EFF6FF',
+  },
+  transferCountText: {
+    fontFamily: fontFamily.semiBold,
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#0B4F8A',
   },
   subHeading: {
     fontFamily: fontFamily.semiBold,
@@ -1287,18 +1376,72 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
     marginBottom: 4,
   },
-  transferItem: {
+  transferCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 8,
-    borderRadius: 8,
+    gap: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 11,
+    borderRadius: 14,
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
   },
-  transferText: {
+  transferRailCol: {
+    width: 22,
+    height: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  transferRailHalf: {
+    width: 3,
     flex: 1,
+    borderRadius: 2,
+  },
+  transferRailDot: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1.5,
+    borderColor: '#CBD5E1',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginVertical: -2,
+    zIndex: 2,
+  },
+  transferBody: {
+    flex: 1,
+    gap: 2,
+  },
+  transferStationTitle: {
     fontFamily: fontFamily.semiBold,
-    fontSize: fontSize.caption,
+    fontSize: 13.5,
+    fontWeight: '600',
+    color: '#0F172A',
+  },
+  transferSubText: {
+    fontFamily: fontFamily.regular,
+    fontSize: 11.5,
+    color: '#64748B',
+  },
+  transferBadgesWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  lineBadgePill: {
+    paddingHorizontal: 9,
+    paddingVertical: 4,
+    borderRadius: 999,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  lineBadgePillText: {
+    fontFamily: fontFamily.bold,
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#FFFFFF',
   },
   miniPill: {
     width: 20,
