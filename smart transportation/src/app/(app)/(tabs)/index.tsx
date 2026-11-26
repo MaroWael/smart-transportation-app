@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Animated,
+  Modal,
   Pressable,
   RefreshControl,
   StyleSheet,
@@ -96,10 +97,17 @@ export default function HomeScreen() {
 
   if (isInitialLoading) {
     return (
-      <TransitLoadingScreen
-        isStaff={isStaffOnly}
-        userName={user?.fullName ?? undefined}
-      />
+      <Modal
+        visible
+        transparent={false}
+        animationType="none"
+        statusBarTranslucent
+      >
+        <TransitLoadingScreen
+          isStaff={isStaffOnly}
+          userName={user?.fullName ?? undefined}
+        />
+      </Modal>
     );
   }
 

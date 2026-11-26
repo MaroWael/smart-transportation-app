@@ -13,7 +13,6 @@ import '@/i18n';
 
 import { AuthProvider } from '@/context/auth-context';
 import { AuthGuard } from '@/components/auth-guard';
-import { LoadingOverlay } from '@/components/loading-overlay';
 
 void SplashScreen.preventAutoHideAsync().catch(() => {});
 
@@ -31,13 +30,18 @@ export default function RootLayout() {
     }
   }, [fontsLoaded]);
 
+  // Keep native splash screen visible until Inter fonts are fully loaded
+  // so Android never measures/clips text with fallback system fonts.
+  if (!fontsLoaded) {
+    return null;
+  }
+
   return (
     <AuthProvider>
       <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
         <AuthGuard>
           <Slot />
         </AuthGuard>
-        {!fontsLoaded && <LoadingOverlay />}
       </ThemeProvider>
     </AuthProvider>
   );

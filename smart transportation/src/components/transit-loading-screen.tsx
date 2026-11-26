@@ -162,14 +162,17 @@ export function TransitLoadingScreen({
 
         {/* Role Pill */}
         <View style={styles.brandPill}>
-          <Text style={[styles.brandPillText, { color: theme.primary }]}>
-            {isStaff ? 'STATION STAFF PORTAL' : 'SMART TRANSIT'}
+          <Text
+            numberOfLines={1}
+            style={[styles.brandPillText, { color: theme.primary }]}
+          >
+            {isStaff ? 'STATION STAFF' : 'SMART TRANSIT'}
           </Text>
         </View>
 
         {/* Greeting & Status */}
         <Text style={[styles.title, { color: theme.textPrimary }]}>
-          {firstName ? `Welcome, ${firstName}` : 'Getting things ready'}
+          {firstName ? `Welcome, ${firstName}` : 'Smart Transit'}
         </Text>
         <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
           {isStaff
@@ -234,31 +237,38 @@ const styles = StyleSheet.create({
   },
   brandPill: {
     backgroundColor: '#E0F2FE',
-    paddingHorizontal: 12,
+    paddingHorizontal: 14,
     paddingVertical: 5,
     borderRadius: 999,
     marginBottom: 12,
+    alignSelf: 'center',
   },
   brandPillText: {
     fontFamily: fontFamily.bold,
-    fontSize: 10.5,
+    fontSize: 11,
     fontWeight: '700',
-    letterSpacing: 0.9,
+    letterSpacing: 0.6,
+    includeFontPadding: false,
+    textAlign: 'center',
   },
   title: {
     fontFamily: fontFamily.bold,
     fontSize: 22,
     fontWeight: '700',
-    letterSpacing: -0.4,
+    letterSpacing: -0.3,
     textAlign: 'center',
+    includeFontPadding: false,
     marginBottom: 6,
+    width: '100%',
   },
   subtitle: {
     fontFamily: fontFamily.regular,
     fontSize: 13.5,
     textAlign: 'center',
     lineHeight: 20,
+    includeFontPadding: false,
     marginBottom: 24,
+    width: '100%',
   },
   dotsRow: {
     flexDirection: 'row',

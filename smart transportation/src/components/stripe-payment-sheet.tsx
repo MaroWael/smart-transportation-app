@@ -1,10 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
+  Keyboard,
   KeyboardAvoidingView,
   Modal,
   Platform,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -106,6 +108,23 @@ export function StripePaymentSheet({
   const [localError, setLocalError] = useState<string | null>(null);
   const [confirmingCancel, setConfirmingCancel] = useState(false);
   const [cancelling, setCancelling] = useState(false);
+  const [androidKeyboardHeight, setAndroidKeyboardHeight] = useState(0);
+
+  // Android Modals often ignore softwareKeyboardLayoutMode="resize";
+  // tracking keyboard height lifts the entire bottom sheet cleanly above the keyboard.
+  useEffect(() => {
+    if (Platform.OS !== 'android') return;
+    const showSub = Keyboard.addListener('keyboardDidShow', (e) => {
+      setAndroidKeyboardHeight(e.endCoordinates?.height ?? 0);
+    });
+    const hideSub = Keyboard.addListener('keyboardDidHide', () => {
+      setAndroidKeyboardHeight(0);
+    });
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
 
   // Reset inline cancel confirmation whenever sheet opens/closes
   useEffect(() => {
@@ -113,6 +132,7 @@ export function StripePaymentSheet({
       setConfirmingCancel(false);
       setLocalError(null);
       setErrorField(null);
+      setAndroidKeyboardHeight(0);
     }
   }, [visible]);
 
@@ -210,7 +230,12 @@ export function StripePaymentSheet({
     >
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        style={styles.overlay}
+        style={[
+          styles.overlay,
+          Platform.OS === 'android' && androidKeyboardHeight > 0
+            ? { paddingBottom: androidKeyboardHeight }
+            : null,
+        ]}
       >
         <Pressable
           style={styles.backdrop}
@@ -220,6 +245,11 @@ export function StripePaymentSheet({
         />
 
         <View style={[styles.sheet, { backgroundColor: theme.surface }]}>
+          <ScrollView
+            bounces={false}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+          >
           {/* Top Drag Pill */}
           <View style={styles.handle} />
 
@@ -448,6 +478,7 @@ export function StripePaymentSheet({
               Cancel payment
             </Text>
           </Pressable>
+          </ScrollView>
         </View>
 
         {/* Centered Cancel Confirmation Dialog (identical style to Journey screen) */}
@@ -517,6 +548,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(15, 23, 42, 0.48)',
   },
   sheet: {
+    maxHeight: '92%',
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
     paddingHorizontal: 22,
